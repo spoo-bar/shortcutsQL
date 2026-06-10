@@ -1,0 +1,39 @@
+# macOS
+.DS_Store
+
+# Xcode
+## User settings (per-developer; shared schemes under xcshareddata are committed)
+xcuserdata/
+*.xcuserstate
+*.xcscmblueprint
+
+## Build products & derived data
+build/
+DerivedData/
+*.moved-aside
+*.hmap
+*.ipa
+*.dSYM.zip
+*.dSYM
+
+## Playgrounds
+timeline.xctimeline
+playground.xcworkspace
+
+# Swift Package Manager
+.build/
+.swiftpm/
+Packages/
+Package.resolved
+
+# CocoaPods (uncomment if you adopt CocoaPods)
+# Pods/
+
+# Carthage (uncomment if you adopt Carthage)
+# Carthage/Build/
+
+# Fastlane
+fastlane/report.xml
+fastlane/Preview.html
+fastlane/screenshots/**/*.png
+fastlane/test_output
