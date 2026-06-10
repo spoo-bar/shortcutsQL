@@ -6,6 +6,11 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		AABB00000000000000000070 /* Runestone in Frameworks */ = {isa = PBXBuildFile; productRef = AABB00000000000000000080 /* Runestone */; };
+		AABB00000000000000000071 /* TreeSitterSQLRunestone in Frameworks */ = {isa = PBXBuildFile; productRef = AABB00000000000000000081 /* TreeSitterSQLRunestone */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXFileReference section */
 		AABB00000000000000000020 /* ShortcutsQL.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = ShortcutsQL.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		AABB00000000000000000021 /* ShortcutsQLTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = ShortcutsQLTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -29,6 +34,8 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				AABB00000000000000000070 /* Runestone in Frameworks */,
+				AABB00000000000000000071 /* TreeSitterSQLRunestone in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -80,6 +87,8 @@
 			);
 			name = ShortcutsQL;
 			packageProductDependencies = (
+				AABB00000000000000000080 /* Runestone */,
+				AABB00000000000000000081 /* TreeSitterSQLRunestone */,
 			);
 			productName = ShortcutsQL;
 			productReference = AABB00000000000000000020 /* ShortcutsQL.app */;
@@ -136,6 +145,10 @@
 			);
 			mainGroup = AABB00000000000000000002;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				AABB00000000000000000090 /* XCRemoteSwiftPackageReference "Runestone" */,
+				AABB00000000000000000091 /* XCRemoteSwiftPackageReference "TreeSitterLanguages" */,
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = AABB00000000000000000003 /* Products */;
 			projectDirPath = "";
@@ -438,6 +451,38 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		AABB00000000000000000090 /* XCRemoteSwiftPackageReference "Runestone" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/simonbs/Runestone";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 0.5.0;
+			};
+		};
+		AABB00000000000000000091 /* XCRemoteSwiftPackageReference "TreeSitterLanguages" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/simonbs/TreeSitterLanguages";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 0.1.0;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		AABB00000000000000000080 /* Runestone */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = AABB00000000000000000090 /* XCRemoteSwiftPackageReference "Runestone" */;
+			productName = Runestone;
+		};
+		AABB00000000000000000081 /* TreeSitterSQLRunestone */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = AABB00000000000000000091 /* XCRemoteSwiftPackageReference "TreeSitterLanguages" */;
+			productName = TreeSitterSQLRunestone;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = AABB00000000000000000001 /* Project object */;
 }
