@@ -45,7 +45,7 @@ Run them in Xcode with **⌘U**, or from the command line:
 xcodebuild test \
   -project ShortcutsQL.xcodeproj \
   -scheme ShortcutsQL \
-  -destination 'platform=iOS Simulator,name=iPhone 17,OS=latest'
+  -destination 'platform=iOS Simulator,name=iPhone 13,OS=latest'
 ```
 
 ## Continuous integration
