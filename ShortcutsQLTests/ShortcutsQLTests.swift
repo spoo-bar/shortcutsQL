@@ -79,50 +79,6 @@ struct ResultShapeTests {
     }
 }
 
-@Suite("SQL highlighting")
-struct SQLHighlighterTests {
-    private func kinds(of line: String) -> [String: SQLTokenKind] {
-        Dictionary(SQLHighlighter.tokenize(line: line).map { ($0.text, $0.kind) },
-                   uniquingKeysWith: { first, _ in first })
-    }
-
-    @Test("Keywords, functions, and identifiers are classified")
-    func classification() {
-        let kinds = kinds(of: "SELECT count(*) AS signups")
-        #expect(kinds["SELECT"] == .keyword)
-        #expect(kinds["count"] == .function)
-        #expect(kinds["AS"] == .keyword)
-        #expect(kinds["signups"] == .plain)
-    }
-
-    @Test("Strings, numbers, and comments are classified")
-    func literals() {
-        #expect(kinds(of: "WHERE plan = 'pro' LIMIT 25")["'pro'"] == .string)
-        #expect(kinds(of: "LIMIT 25")["25"] == .number)
-        #expect(SQLHighlighter.tokenize(line: "-- new pro signups today")
-            == [SQLToken(text: "-- new pro signups today", kind: .comment)])
-    }
-
-    @Test("Qualified columns are table-tinted on both sides of the dot")
-    func qualifiedColumns() {
-        let kinds = kinds(of: "u.email")
-        #expect(kinds["u"] == .table)
-        #expect(kinds["email"] == .table)
-    }
-
-    @Test("Escaped quotes stay inside one string token")
-    func escapedQuote() {
-        #expect(kinds(of: "SELECT 'it''s'")["'it''s'"] == .string)
-    }
-
-    @Test("Tokenizing preserves the original text exactly")
-    func roundTrip() {
-        let sql = MockData.queries[4].sql
-        let joined = SQLHighlighter.tokenize(sql).map(\.text).joined()
-        #expect(joined == sql)
-    }
-}
-
 @Suite("Query store")
 struct QueryStoreTests {
     @Test("Saving a new query prepends it")

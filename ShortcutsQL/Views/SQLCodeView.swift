@@ -5,10 +5,8 @@ struct SQLCodeView: View {
     let sql: String
 
     var body: some View {
-        Text(SQLHighlighter.highlighted(sql))
-            .font(.system(.footnote, design: .monospaced))
+        SQLReadOnlyView(sql: sql)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(12)
             .background(Color(.tertiarySystemGroupedBackground))
     }
 }
