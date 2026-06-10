@@ -22,8 +22,10 @@ Select an iOS Simulator (or a connected device) and press **⌘R** to build and 
 ```
 ShortcutsQL/                 # App sources (file-system synchronized group)
   ShortcutsQLApp.swift       # @main entry point
-  ContentView.swift          # Root SwiftUI view
-  Models/Counter.swift       # Example @Observable model
+  ContentView.swift          # App shell: tabs, sheets, toasts
+  BrandColors.swift          # SQL syntax highlighting palette
+  Models/                    # Mock data, query store, SQL validation/highlighting
+  Views/                     # Home, query editor, databases, settings
   Assets.xcassets/           # App icon & accent color
 ShortcutsQLTests/            # Unit tests (Swift Testing)
   ShortcutsQLTests.swift

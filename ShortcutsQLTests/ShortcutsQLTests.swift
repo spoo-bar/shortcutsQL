@@ -1,47 +1,166 @@
 import Testing
 @testable import ShortcutsQL
 
-@Suite("Counter")
-struct CounterTests {
-    @Test("Starts at zero by default")
-    func startsAtZero() {
-        let counter = Counter()
-        #expect(counter.count == 0)
+@Suite("SQL validation")
+struct SQLValidatorTests {
+    @Test("Well-formed SELECT passes")
+    func validSelect() {
+        #expect(SQLValidator.validate(MockData.queries[0].sql) == nil)
     }
 
-    @Test("Respects a custom initial value")
-    func customInitialValue() {
-        let counter = Counter(count: 42)
-        #expect(counter.count == 42)
+    @Test("Literal SELECT without FROM passes")
+    func selectLiteral() {
+        #expect(SQLValidator.validate("SELECT 1") == nil)
     }
 
-    @Test("Increment increases the count by one")
-    func increment() {
-        let counter = Counter()
-        counter.increment()
-        #expect(counter.count == 1)
+    @Test("CTE passes")
+    func cte() {
+        #expect(SQLValidator.validate("WITH x AS (SELECT 1) SELECT * FROM x") == nil)
     }
 
-    @Test("Decrement decreases the count by one")
-    func decrement() {
-        let counter = Counter(count: 5)
-        counter.decrement()
-        #expect(counter.count == 4)
+    @Test("Misspelled keyword is a syntax error naming the token")
+    func misspelledKeyword() {
+        let error = SQLValidator.validate("SELEC * FORM logs")
+        #expect(error?.hasPrefix("syntax error at or near \"SELEC\"") == true)
     }
 
-    @Test("Reset returns the count to zero")
-    func reset() {
-        let counter = Counter(count: 10)
-        counter.reset()
-        #expect(counter.count == 0)
+    @Test("Unmatched opening parenthesis is caught")
+    func unmatchedOpeningParen() {
+        let error = SQLValidator.validate("SELECT count(* FROM users")
+        #expect(error?.contains("unmatched opening parenthesis") == true)
     }
 
-    @Test("Repeated increments accumulate", arguments: [1, 3, 10])
-    func repeatedIncrements(times: Int) {
-        let counter = Counter()
-        for _ in 0..<times {
-            counter.increment()
-        }
-        #expect(counter.count == times)
+    @Test("Unmatched closing parenthesis is caught")
+    func unmatchedClosingParen() {
+        let error = SQLValidator.validate("SELECT count(*)) FROM users")
+        #expect(error?.contains("unmatched closing parenthesis") == true)
+    }
+
+    @Test("Unterminated string literal is caught")
+    func unterminatedString() {
+        let error = SQLValidator.validate("SELECT * FROM users WHERE plan = 'pro")
+        #expect(error?.contains("unterminated quoted string") == true)
+    }
+
+    @Test("SELECT of a column without FROM is caught")
+    func missingFrom() {
+        let error = SQLValidator.validate("SELECT signups")
+        #expect(error?.contains("missing FROM clause") == true)
+    }
+
+    @Test("Empty statement is caught")
+    func emptyStatement() {
+        #expect(SQLValidator.validate("  -- only a comment\n") == "empty statement")
+    }
+}
+
+@Suite("Result shape")
+struct ResultShapeTests {
+    @Test("Single aggregate is a scalar")
+    func scalar() {
+        #expect(ResultShape.shape(of: "SELECT count(*) AS signups FROM users") == .scalar)
+    }
+
+    @Test("Few columns is a narrow table")
+    func narrow() {
+        #expect(ResultShape.shape(of: "SELECT name, mrr_usd FROM accounts") == .narrow)
+    }
+
+    @Test("The 12-column export is a wide table")
+    func wide() {
+        let query = MockData.queries.first { $0.id == "subs" }!
+        #expect(ResultShape.shape(of: query.sql) == .wide)
+        #expect(ResultShape.selectColumnCount(query.sql) == 12)
+    }
+
+    @Test("Commas inside parens don't count as columns")
+    func nestedParens() {
+        #expect(ResultShape.selectColumnCount("SELECT round(sum(amount)/100.0, 0) AS mrr FROM s") == 1)
+    }
+}
+
+@Suite("SQL highlighting")
+struct SQLHighlighterTests {
+    private func kinds(of line: String) -> [String: SQLTokenKind] {
+        Dictionary(SQLHighlighter.tokenize(line: line).map { ($0.text, $0.kind) },
+                   uniquingKeysWith: { first, _ in first })
+    }
+
+    @Test("Keywords, functions, and identifiers are classified")
+    func classification() {
+        let kinds = kinds(of: "SELECT count(*) AS signups")
+        #expect(kinds["SELECT"] == .keyword)
+        #expect(kinds["count"] == .function)
+        #expect(kinds["AS"] == .keyword)
+        #expect(kinds["signups"] == .plain)
+    }
+
+    @Test("Strings, numbers, and comments are classified")
+    func literals() {
+        #expect(kinds(of: "WHERE plan = 'pro' LIMIT 25")["'pro'"] == .string)
+        #expect(kinds(of: "LIMIT 25")["25"] == .number)
+        #expect(SQLHighlighter.tokenize(line: "-- new pro signups today")
+            == [SQLToken(text: "-- new pro signups today", kind: .comment)])
+    }
+
+    @Test("Qualified columns are table-tinted on both sides of the dot")
+    func qualifiedColumns() {
+        let kinds = kinds(of: "u.email")
+        #expect(kinds["u"] == .table)
+        #expect(kinds["email"] == .table)
+    }
+
+    @Test("Escaped quotes stay inside one string token")
+    func escapedQuote() {
+        #expect(kinds(of: "SELECT 'it''s'")["'it''s'"] == .string)
+    }
+
+    @Test("Tokenizing preserves the original text exactly")
+    func roundTrip() {
+        let sql = MockData.queries[4].sql
+        let joined = SQLHighlighter.tokenize(sql).map(\.text).joined()
+        #expect(joined == sql)
+    }
+}
+
+@Suite("Query store")
+struct QueryStoreTests {
+    @Test("Saving a new query prepends it")
+    func saveNew() {
+        let store = QueryStore()
+        let initialCount = store.queries.count
+        let query = SavedQuery(id: "new", name: "Active trials",
+                               serverName: "prod-readonly", database: "app_production",
+                               sql: "SELECT count(*) FROM trials;",
+                               lastRun: "just now", duration: "84 ms", rowsLabel: "1 row")
+        store.save(query)
+        #expect(store.queries.count == initialCount + 1)
+        #expect(store.queries.first?.id == "new")
+    }
+
+    @Test("Saving an existing query updates it in place")
+    func saveExisting() {
+        let store = QueryStore()
+        let initialCount = store.queries.count
+        var query = store.queries[2]
+        query.name = "Renamed"
+        store.save(query)
+        #expect(store.queries.count == initialCount)
+        #expect(store.queries[2].name == "Renamed")
+    }
+
+    @Test("Deleting removes the query")
+    func delete() {
+        let store = QueryStore()
+        let id = store.queries[0].id
+        store.deleteQuery(id: id)
+        #expect(!store.queries.contains { $0.id == id })
+    }
+
+    @Test("Database user falls back to the server's")
+    func databaseUser() {
+        let server = MockData.servers[0]
+        #expect(server.user(forDatabase: "app_billing") == "billing_ro")
+        #expect(server.user(forDatabase: "app_production") == "readonly")
     }
 }
