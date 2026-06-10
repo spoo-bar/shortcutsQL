@@ -1,54 +1,80 @@
 import SwiftUI
 
+/// App shell: Home / Database / Settings tabs, sheet presentation for the
+/// query editor and Add Database, and transient save/delete feedback.
 struct ContentView: View {
-    @State private var counter = Counter()
+    @State private var store = QueryStore()
+    @State private var activeSheet: ActiveSheet?
+    @State private var toast: String?
 
-    var body: some View {
-        NavigationStack {
-            VStack(spacing: 24) {
-                Image(systemName: "swift")
-                    .font(.system(size: 64))
-                    .foregroundStyle(.tint)
-                    .accessibilityHidden(true)
+    private enum ActiveSheet: Identifiable {
+        case newQuery
+        case editQuery(SavedQuery)
+        case addServer
 
-                Text("Welcome to ShortcutsQL")
-                    .font(.title2)
-                    .fontWeight(.semibold)
-
-                Text("\(counter.count)")
-                    .font(.system(size: 72, weight: .bold, design: .rounded))
-                    .contentTransition(.numericText())
-                    .animation(.snappy, value: counter.count)
-                    .accessibilityLabel("Count is \(counter.count)")
-
-                HStack(spacing: 16) {
-                    Button {
-                        counter.decrement()
-                    } label: {
-                        Label("Decrement", systemImage: "minus")
-                    }
-
-                    Button {
-                        counter.increment()
-                    } label: {
-                        Label("Increment", systemImage: "plus")
-                    }
-                }
-                .labelStyle(.iconOnly)
-                .buttonStyle(.borderedProminent)
-                .font(.title2)
-            }
-            .padding()
-            .navigationTitle("ShortcutsQL")
-            .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button("Reset", systemImage: "arrow.counterclockwise") {
-                        counter.reset()
-                    }
-                    .disabled(counter.count == 0)
-                }
+        var id: String {
+            switch self {
+            case .newQuery: "new-query"
+            case .editQuery(let query): "edit-\(query.id)"
+            case .addServer: "add-server"
             }
         }
+    }
+
+    var body: some View {
+        TabView {
+            Tab("Home", systemImage: "chevron.left.forwardslash.chevron.right") {
+                HomeView(
+                    store: store,
+                    onNew: { activeSheet = .newQuery },
+                    onOpen: { activeSheet = .editQuery($0) }
+                )
+            }
+            Tab("Database", systemImage: "cylinder.split.1x2") {
+                DatabasesView(store: store, onAdd: { activeSheet = .addServer })
+            }
+            Tab("Settings", systemImage: "gearshape") {
+                SettingsView()
+            }
+        }
+        .sheet(item: $activeSheet) { sheet in
+            switch sheet {
+            case .newQuery:
+                QueryEditorView(store: store, query: nil, notify: showToast)
+            case .editQuery(let query):
+                QueryEditorView(store: store, query: query, notify: showToast)
+            case .addServer:
+                AddDatabaseView(store: store, notify: showToast)
+            }
+        }
+        .overlay(alignment: .top) {
+            if let toast {
+                ToastView(text: toast)
+                    .transition(.move(edge: .top).combined(with: .opacity))
+                    .task(id: toast) {
+                        try? await Task.sleep(for: .seconds(2.6))
+                        withAnimation(.snappy) { self.toast = nil }
+                    }
+            }
+        }
+    }
+
+    private func showToast(_ text: String) {
+        withAnimation(.snappy) { toast = text }
+    }
+}
+
+private struct ToastView: View {
+    let text: String
+
+    var body: some View {
+        Text(text)
+            .font(.subheadline)
+            .padding(.vertical, 10)
+            .padding(.horizontal, 16)
+            .background(.regularMaterial, in: Capsule())
+            .shadow(color: .black.opacity(0.12), radius: 12, y: 4)
+            .padding(.horizontal, 16)
     }
 }
 
