@@ -21,10 +21,26 @@ jobs:
         with:
           xcode-version: latest
 
-      - name: Show versions and available simulators
+      - name: Show versions
+        run: xcodebuild -version
+
+      - name: Create iPhone 13 simulator
+        id: sim
         run: |
-          xcodebuild -version
-          xcrun simctl list devices available
+          set -euo pipefail
+          # Newest available iOS runtime on the runner.
+          runtime=$(xcrun simctl list runtimes available -j | python3 -c "import sys, json; rs=[r for r in json.load(sys.stdin)['runtimes'] if r['platform']=='iOS' and r.get('isAvailable')]; rs.sort(key=lambda r: [int(x) for x in r['version'].split('.')]); print(rs[-1]['identifier'])")
+          # iPhone 13 device type (not pre-created on the runner image, so we create it).
+          devtype=$(xcrun simctl list devicetypes -j | python3 -c "import sys, json; ts=[t for t in json.load(sys.stdin)['devicetypes'] if t['name']=='iPhone 13']; print(ts[0]['identifier'] if ts else '')")
+          if [ -z "$devtype" ]; then
+            echo "::error::iPhone 13 device type is not available in this Xcode. Available device types:"
+            xcrun simctl list devicetypes
+            exit 1
+          fi
+          echo "Creating iPhone 13 on runtime $runtime"
+          udid=$(xcrun simctl create 'iPhone 13 (CI)' "$devtype" "$runtime")
+          echo "Created simulator $udid"
+          echo "udid=$udid" >> "$GITHUB_OUTPUT"
 
       - name: Build & Test
         run: |
@@ -32,5 +48,5 @@ jobs:
           xcodebuild test \
             -project ShortcutsQL.xcodeproj \
             -scheme ShortcutsQL \
-            -destination 'platform=iOS Simulator,name=iPhone 13,OS=latest' \
+            -destination "platform=iOS Simulator,id=${{ steps.sim.outputs.udid }}" \
             CODE_SIGNING_ALLOWED=NO
