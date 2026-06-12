@@ -6,6 +6,9 @@ struct PickerOption: Identifiable {
     var subtitle: String?
     var color: Color?
     var systemImage: String?
+    /// When true the row stays visible but isn't selectable, with a
+    /// "Not supported yet" note in place of the checkmark.
+    var disabled: Bool = false
 }
 
 /// iOS "dropdown": a sheet listing options with a checkmark on the
@@ -36,7 +39,7 @@ struct PickerSheetView: View {
                         }
                         VStack(alignment: .leading, spacing: 2) {
                             Text(option.label)
-                                .foregroundStyle(.primary)
+                                .foregroundStyle(option.disabled ? .secondary : .primary)
                             if let subtitle = option.subtitle {
                                 Text(subtitle)
                                     .font(.system(.caption, design: .monospaced))
@@ -44,13 +47,18 @@ struct PickerSheetView: View {
                             }
                         }
                         Spacer()
-                        if option.id == selection {
+                        if option.disabled {
+                            Text("Not supported yet")
+                                .font(.caption)
+                                .foregroundStyle(.tertiary)
+                        } else if option.id == selection {
                             Image(systemName: "checkmark")
                                 .fontWeight(.semibold)
                                 .foregroundStyle(.tint)
                         }
                     }
                 }
+                .disabled(option.disabled)
             }
             .navigationTitle(title)
             .navigationBarTitleDisplayMode(.inline)

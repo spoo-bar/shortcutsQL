@@ -27,13 +27,13 @@ struct AddDatabaseView: View {
         case failed(String)
     }
 
+    // SQLite is test-only and ClickHouse is unsupported, so neither appears here.
+    // MySQL, MariaDB, and SQL Server stay visible but aren't selectable yet.
     private static let engines: [PickerOption] = [
         PickerOption(id: "PostgreSQL", label: "PostgreSQL", subtitle: "default port 5432", systemImage: "server.rack"),
-        PickerOption(id: "MySQL", label: "MySQL", subtitle: "default port 3306", systemImage: "server.rack"),
-        PickerOption(id: "MariaDB", label: "MariaDB", subtitle: "default port 3306", systemImage: "server.rack"),
-        PickerOption(id: "SQLite", label: "SQLite", subtitle: "local file", systemImage: "server.rack"),
-        PickerOption(id: "ClickHouse", label: "ClickHouse", subtitle: "default port 9000", systemImage: "server.rack"),
-        PickerOption(id: "SQL Server", label: "SQL Server", subtitle: "default port 1433", systemImage: "server.rack"),
+        PickerOption(id: "MySQL", label: "MySQL", subtitle: "default port 3306", systemImage: "server.rack", disabled: true),
+        PickerOption(id: "MariaDB", label: "MariaDB", subtitle: "default port 3306", systemImage: "server.rack", disabled: true),
+        PickerOption(id: "SQL Server", label: "SQL Server", subtitle: "default port 1433", systemImage: "server.rack", disabled: true),
     ]
 
     var body: some View {
