@@ -40,8 +40,7 @@ struct QueryEditorView: View {
         _name = State(initialValue: query?.name ?? "")
         _serverID = State(initialValue: server.id)
         _database = State(initialValue: query?.database ?? server.databases[0].name)
-        _sql = State(initialValue: query?.sql
-            ?? "SELECT count(*) AS signups\nFROM users\nWHERE created_at >= current_date;")
+        _sql = State(initialValue: query?.sql ?? "")
     }
 
     private var isEditing: Bool { query != nil }
@@ -85,7 +84,7 @@ struct QueryEditorView: View {
                     Button {
                         activePicker = .database
                     } label: {
-                        pickerRow(title: "Database", subtitle: "connects as \(databaseUser)", value: database) {
+                        pickerRow(title: "Database", value: database) {
                             Image(systemName: "cylinder.split.1x2")
                                 .foregroundStyle(.secondary)
                         }
@@ -118,8 +117,11 @@ struct QueryEditorView: View {
 
                 if isEditing {
                     Section {
-                        Button("Delete Query", systemImage: "trash", role: .destructive) {
+                        Button(role: .destructive) {
                             confirmDelete = true
+                        } label: {
+                            Text("Delete Query")
+                                .frame(maxWidth: .infinity, alignment: .center)
                         }
                     }
                 }

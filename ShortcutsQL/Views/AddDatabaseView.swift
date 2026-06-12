@@ -8,15 +8,15 @@ struct AddDatabaseView: View {
 
     @Environment(\.dismiss) private var dismiss
 
-    @State private var name = "prod-readonly"
+    @State private var name = ""
     @State private var engine = "PostgreSQL"
     @State private var showEnginePicker = false
-    @State private var host = "db.internal"
-    @State private var port = "5432"
-    @State private var user = "readonly"
-    @State private var password = "hunter2hunter2"
+    @State private var host = ""
+    @State private var port = ""
+    @State private var user = ""
+    @State private var password = ""
     @State private var color = ServerColor.blue
-    @State private var databases = ["app_production"]
+    @State private var databases: [String] = []
     @State private var newDatabase = ""
     @State private var test = TestPhase.idle
 
@@ -209,9 +209,9 @@ struct AddDatabaseView: View {
         } header: {
             Text("Connection")
         } footer: {
-            if test == .idle {
-                Text("Credentials are stored in the iOS Keychain. Test before saving.")
-            }
+            // Keep the footer always present: toggling it in/out recreates the
+            // Section and makes the Form scroll back to the top on Test connection.
+            Text("Credentials are stored in the iOS Keychain. Test before saving.")
         }
     }
 
