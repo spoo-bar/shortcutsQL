@@ -5,7 +5,7 @@ import Foundation
 enum MockData {
     static let servers: [DatabaseServer] = [
         DatabaseServer(
-            id: "prod", name: "prod-readonly", engine: "PostgreSQL 16",
+            id: "prod", name: "prod-readonly", engine: "PostgreSQL",
             host: "db.internal:5432", user: "readonly", color: .blue,
             databases: [
                 ServerDatabase(name: "app_production"),
@@ -13,7 +13,7 @@ enum MockData {
             ]
         ),
         DatabaseServer(
-            id: "stg", name: "staging", engine: "PostgreSQL 15",
+            id: "stg", name: "staging", engine: "PostgreSQL",
             host: "stg.internal:5432", user: "deploy", color: .orange,
             databases: [ServerDatabase(name: "app_staging")]
         ),
@@ -26,7 +26,7 @@ enum MockData {
             ]
         ),
         DatabaseServer(
-            id: "metrics", name: "metrics", engine: "MySQL 8",
+            id: "metrics", name: "metrics", engine: "MySQL",
             host: "mysql.internal:3306", user: "grafana", color: .green,
             databases: [ServerDatabase(name: "metrics")]
         ),

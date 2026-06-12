@@ -53,11 +53,15 @@ struct AddDatabaseView: View {
                 }
                 ToolbarItem(placement: .topBarTrailing) {
                     Button("Save", action: save)
-                        .disabled(databases.isEmpty)
+                        .disabled(databases.isEmpty || test != .ok)
                 }
             }
             .onChange(of: host) { test = .idle }
             .onChange(of: password) { test = .idle }
+            .onChange(of: port) { test = .idle }
+            .onChange(of: user) { test = .idle }
+            .onChange(of: engine) { test = .idle }
+            .onChange(of: databases) { test = .idle }
             .sheet(isPresented: $showEnginePicker) {
                 PickerSheetView(
                     title: "Engine",
@@ -167,8 +171,6 @@ struct AddDatabaseView: View {
                 Spacer()
                 Text("\(databases.count) added")
             }
-        } footer: {
-            Text("Note: databases on a server may use different credentials — per-database credentials aren\u{2019}t configurable yet.")
         }
     }
 
@@ -208,7 +210,7 @@ struct AddDatabaseView: View {
             Text("Connection")
         } footer: {
             if test == .idle {
-                Text("Credentials are stored in the iOS Keychain. Test before saving. Tip: a host outside *.internal (or a blank password) previews the failure state.")
+                Text("Credentials are stored in the iOS Keychain. Test before saving.")
             }
         }
     }
