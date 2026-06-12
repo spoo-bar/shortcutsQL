@@ -9,7 +9,7 @@ struct SQLEditor: View {
     var body: some View {
         SQLEditorView(text: $text)
             .frame(maxWidth: .infinity, minHeight: 156, alignment: .topLeading)
-            .background(Color(.tertiarySystemGroupedBackground))
+            .background(Color(.secondarySystemGroupedBackground))
             .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
             .overlay {
                 if invalid {

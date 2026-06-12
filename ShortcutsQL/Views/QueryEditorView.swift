@@ -154,7 +154,6 @@ struct QueryEditorView: View {
                         title: "Database",
                         options: server.databases.map {
                             PickerOption(id: $0.name, label: $0.name,
-                                         subtitle: "connects as \($0.user ?? server.user)",
                                          color: server.color.color)
                         },
                         selection: database,
