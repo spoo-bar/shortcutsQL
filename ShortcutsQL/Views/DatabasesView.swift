@@ -65,8 +65,6 @@ struct DatabasesView: View {
                 }
             } header: {
                 Text("Servers")
-            } footer: {
-                Text("Credentials are stored in the iOS Keychain, never synced in plaintext.")
             }
         }
     }
