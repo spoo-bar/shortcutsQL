@@ -16,7 +16,7 @@ struct RunSavedQueryIntent: AppIntent {
         Summary("Run \(\.$query)")
     }
 
-    func perform() async throws -> some IntentResult & ReturnsValue<String> {
+    func perform() async throws -> some IntentResult & ReturnsValue<String> & ProvidesDialog {
         let store = QueryStore()
         guard let saved = store.queries.first(where: { $0.id == query.id }) else {
             throw ConnectionError(message: "That query no longer exists.")
@@ -38,6 +38,9 @@ struct RunSavedQueryIntent: AppIntent {
             rowCount: result.table.rows.count
         )
 
-        return .result(value: result.table.json)
+        let json = result.table.json
+        // The value feeds the next action; the dialog makes the result visible
+        // when the action is run on its own.
+        return .result(value: json, dialog: IntentDialog(stringLiteral: json))
     }
 }
