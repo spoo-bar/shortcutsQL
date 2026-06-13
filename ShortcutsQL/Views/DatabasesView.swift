@@ -5,6 +5,7 @@ import SwiftUI
 struct DatabasesView: View {
     let store: QueryStore
     let onAdd: () -> Void
+    let onEdit: (DatabaseServer) -> Void
 
     private var databaseCount: Int {
         store.servers.reduce(0) { $0 + $1.databases.count }
@@ -15,7 +16,9 @@ struct DatabasesView: View {
             List {
                 Section {
                     ForEach(store.servers) { server in
-                        Button(action: onAdd) {
+                        Button {
+                            onEdit(server)
+                        } label: {
                             HStack(spacing: 12) {
                                 Image(systemName: "cylinder.split.1x2")
                                     .foregroundStyle(server.color.color)
@@ -56,5 +59,5 @@ struct DatabasesView: View {
 }
 
 #Preview {
-    DatabasesView(store: QueryStore(), onAdd: {})
+    DatabasesView(store: QueryStore(), onAdd: {}, onEdit: { _ in })
 }

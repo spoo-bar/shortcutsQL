@@ -1,9 +1,11 @@
 import SwiftUI
 
-/// Add Database: server details with an engine picker, a color swatch row,
-/// the server's databases, and Test connection (with a failure state).
+/// Add / Edit Database: server details with an engine picker, a color swatch
+/// row, the server's databases, and Test connection (with a failure state).
+/// Editing an existing server also offers a confirmed Delete Database action.
 struct AddDatabaseView: View {
     let store: QueryStore
+    let server: DatabaseServer?
     let notify: (String) -> Void
 
     @Environment(\.dismiss) private var dismiss
@@ -19,6 +21,26 @@ struct AddDatabaseView: View {
     @State private var databases: [String] = []
     @State private var newDatabase = ""
     @State private var test = TestPhase.idle
+    @State private var confirmDelete = false
+
+    init(store: QueryStore, server: DatabaseServer? = nil, notify: @escaping (String) -> Void) {
+        self.store = store
+        self.server = server
+        self.notify = notify
+        guard let server else { return }
+        let (host, port) = Self.splitHostPort(server.host)
+        _name = State(initialValue: server.name)
+        _engine = State(initialValue: server.engine)
+        _host = State(initialValue: host)
+        _port = State(initialValue: port)
+        _user = State(initialValue: server.user)
+        _color = State(initialValue: server.color)
+        _databases = State(initialValue: server.databases.map(\.name))
+        // Password isn't kept in the model (Keychain-backed), so it starts
+        // blank — re-enter it to pass Test connection before saving.
+    }
+
+    private var isEditing: Bool { server != nil }
 
     private enum TestPhase: Equatable {
         case idle
@@ -43,10 +65,27 @@ struct AddDatabaseView: View {
                 colorSection
                 databasesSection
                 connectionSection
+                if isEditing {
+                    Section {
+                        Button(role: .destructive) {
+                            confirmDelete = true
+                        } label: {
+                            Text("Delete Database")
+                                .frame(maxWidth: .infinity, alignment: .center)
+                        }
+                    }
+                }
             }
             .scrollDismissesKeyboard(.interactively)
-            .navigationTitle("Add Database")
+            .navigationTitle(isEditing ? "Edit Database" : "Add Database")
             .navigationBarTitleDisplayMode(.inline)
+            .confirmationDialog(
+                "Delete \u{201C}\(name.isEmpty ? "this server" : name)\u{201D}? This can\u{2019}t be undone.",
+                isPresented: $confirmDelete,
+                titleVisibility: .visible
+            ) {
+                Button("Delete Database", role: .destructive, action: deleteServer)
+            }
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
                     Button("Cancel") { dismiss() }
@@ -247,18 +286,35 @@ struct AddDatabaseView: View {
     }
 
     private func save() {
-        let server = DatabaseServer(
-            id: "s\(Int(Date().timeIntervalSince1970 * 1000))",
+        // Preserve any per-database user when editing; the UI only edits names.
+        let merged = databases.map { name in
+            ServerDatabase(name: name, user: server?.databases.first { $0.name == name }?.user)
+        }
+        let saved = DatabaseServer(
+            id: server?.id ?? "s\(Int(Date().timeIntervalSince1970 * 1000))",
             name: name.trimmingCharacters(in: .whitespaces),
             engine: engine,
             host: "\(host.trimmingCharacters(in: .whitespaces)):\(port)",
             user: user,
             color: color,
-            databases: databases.map { ServerDatabase(name: $0) }
+            databases: merged
         )
-        store.addServer(server)
+        store.saveServer(saved)
         dismiss()
-        notify("Database server \u{201C}\(server.name)\u{201D} saved.")
+        notify("Database server \u{201C}\(saved.name)\u{201D} saved.")
+    }
+
+    private func deleteServer() {
+        guard let server else { return }
+        store.deleteServer(id: server.id)
+        dismiss()
+        notify("Database server \u{201C}\(server.name)\u{201D} deleted.")
+    }
+
+    /// Splits a stored `host:port` value back into its parts for editing.
+    private static func splitHostPort(_ combined: String) -> (host: String, port: String) {
+        guard let separator = combined.lastIndex(of: ":") else { return (combined, "") }
+        return (String(combined[..<separator]), String(combined[combined.index(after: separator)...]))
     }
 }
 

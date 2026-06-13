@@ -27,8 +27,17 @@ final class QueryStore {
         queries.removeAll { $0.id == id }
     }
 
-    func addServer(_ server: DatabaseServer) {
-        servers.append(server)
+    /// Updates an existing server in place, or appends a new one.
+    func saveServer(_ server: DatabaseServer) {
+        if let index = servers.firstIndex(where: { $0.id == server.id }) {
+            servers[index] = server
+        } else {
+            servers.append(server)
+        }
+    }
+
+    func deleteServer(id: String) {
+        servers.removeAll { $0.id == id }
     }
 
     func server(named name: String) -> DatabaseServer? {

@@ -11,12 +11,14 @@ struct ContentView: View {
         case newQuery
         case editQuery(SavedQuery)
         case addServer
+        case editServer(DatabaseServer)
 
         var id: String {
             switch self {
             case .newQuery: "new-query"
             case .editQuery(let query): "edit-\(query.id)"
             case .addServer: "add-server"
+            case .editServer(let server): "edit-server-\(server.id)"
             }
         }
     }
@@ -31,7 +33,11 @@ struct ContentView: View {
                 )
             }
             Tab("Database", systemImage: "cylinder.split.1x2") {
-                DatabasesView(store: store, onAdd: { activeSheet = .addServer })
+                DatabasesView(
+                    store: store,
+                    onAdd: { activeSheet = .addServer },
+                    onEdit: { activeSheet = .editServer($0) }
+                )
             }
             Tab("Settings", systemImage: "gearshape") {
                 SettingsView()
@@ -44,7 +50,9 @@ struct ContentView: View {
             case .editQuery(let query):
                 QueryEditorView(store: store, query: query, notify: showToast)
             case .addServer:
-                AddDatabaseView(store: store, notify: showToast)
+                AddDatabaseView(store: store, server: nil, notify: showToast)
+            case .editServer(let server):
+                AddDatabaseView(store: store, server: server, notify: showToast)
             }
         }
         .overlay(alignment: .top) {
