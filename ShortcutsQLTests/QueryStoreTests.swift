@@ -18,7 +18,7 @@ struct QueryStoreTests {
 
     private func sampleServer(id: String, name: String = "prod") -> DatabaseServer {
         DatabaseServer(id: id, name: name, engine: "PostgreSQL", host: "db.internal:5432",
-                       ssl: true, color: .blue, databases: [ServerDatabase(name: "app_production")])
+                       color: .blue, databases: [ServerDatabase(name: "app_production")])
     }
 
     // MARK: Queries

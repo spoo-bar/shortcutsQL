@@ -102,13 +102,13 @@ struct QueryEditorView: View {
                     Button {
                         run()
                     } label: {
-                        Label(phase == .running ? "Running…" : "Run query", systemImage: "play.fill")
+                        Label(phase == .running ? "Running…" : "Run", systemImage: "play.fill")
                             .frame(maxWidth: .infinity)
                     }
                     .disabled(!canRun || phase == .running)
                 } footer: {
                     if phase == .idle {
-                        Text("Run the query read-only to preview its result, then Save.")
+                        Text("Run the query to preview its result, then Save")
                             .frame(maxWidth: .infinity)
                             .multilineTextAlignment(.center)
                     }
@@ -275,8 +275,7 @@ struct QueryEditorView: View {
             port: endpoint.port,
             database: database.isEmpty ? "postgres" : database,
             user: credentials.user,
-            password: credentials.password,
-            ssl: server.ssl
+            password: credentials.password
         )
         let sqlText = sql
         phase = .running

@@ -20,7 +20,6 @@ struct AddDatabaseView: View {
     @State private var color = ServerColor.blue
     @State private var databases: [String] = []
     @State private var newDatabase = ""
-    @State private var ssl = true
     @State private var revealPassword = false
     @State private var test = TestPhase.idle
     @State private var confirmDelete = false
@@ -40,7 +39,6 @@ struct AddDatabaseView: View {
         _password = State(initialValue: credentials?.password ?? "")
         _color = State(initialValue: server.color)
         _databases = State(initialValue: server.databases.map(\.name))
-        _ssl = State(initialValue: server.ssl)
     }
 
     private var isEditing: Bool { server != nil }
@@ -104,7 +102,6 @@ struct AddDatabaseView: View {
             .onChange(of: user) { test = .idle }
             .onChange(of: engine) { test = .idle }
             .onChange(of: databases) { test = .idle }
-            .onChange(of: ssl) { test = .idle }
             .sheet(isPresented: $showEnginePicker) {
                 PickerSheetView(
                     title: "Engine",
@@ -172,7 +169,6 @@ struct AddDatabaseView: View {
                     .accessibilityLabel(revealPassword ? "Hide password" : "Show password")
                 }
             }
-            Toggle("Use SSL/TLS", isOn: $ssl)
         }
     }
 
@@ -286,8 +282,7 @@ struct AddDatabaseView: View {
             port: Int(port.trimmingCharacters(in: .whitespaces)) ?? 5432,
             database: databases.first ?? "postgres",
             user: user.trimmingCharacters(in: .whitespaces),
-            password: password,
-            ssl: ssl
+            password: password
         )
         Task {
             do {
@@ -307,7 +302,6 @@ struct AddDatabaseView: View {
             name: name.trimmingCharacters(in: .whitespaces),
             engine: engine,
             host: "\(host.trimmingCharacters(in: .whitespaces)):\(port)",
-            ssl: ssl,
             color: color,
             databases: databases.map { ServerDatabase(name: $0) }
         )

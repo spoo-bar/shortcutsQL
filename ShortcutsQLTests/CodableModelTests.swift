@@ -8,7 +8,7 @@ struct CodableModelTests {
     func databaseServerRoundTrip() throws {
         let server = DatabaseServer(
             id: "s1", name: "prod", engine: "PostgreSQL", host: "db.internal:5432",
-            ssl: true, color: .blue, databases: [ServerDatabase(name: "app_production")]
+            color: .blue, databases: [ServerDatabase(name: "app_production")]
         )
         let data = try JSONEncoder().encode(server)
         let decoded = try JSONDecoder().decode(DatabaseServer.self, from: data)

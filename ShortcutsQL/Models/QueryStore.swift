@@ -103,8 +103,7 @@ final class QueryStore {
             port: endpoint.port,
             database: query.database.isEmpty ? "postgres" : query.database,
             user: credentials.user,
-            password: credentials.password,
-            ssl: server.ssl
+            password: credentials.password
         )
     }
 

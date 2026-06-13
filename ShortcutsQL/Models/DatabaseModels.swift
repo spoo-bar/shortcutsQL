@@ -33,7 +33,6 @@ struct DatabaseServer: Identifiable, Hashable, Codable {
     var name: String
     var engine: String
     var host: String
-    var ssl: Bool
     var color: ServerColor
     var databases: [ServerDatabase]
 

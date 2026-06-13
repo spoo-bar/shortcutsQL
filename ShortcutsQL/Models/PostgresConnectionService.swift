@@ -9,7 +9,6 @@ struct ConnectionParameters: Sendable {
     var database: String
     var user: String
     var password: String
-    var ssl: Bool
 }
 
 /// Wraps PostgresClientKit (a synchronous/blocking client) behind an async
@@ -96,7 +95,7 @@ enum PostgresConnectionService {
             configuration.port = parameters.port
             configuration.database = parameters.database
             configuration.user = parameters.user
-            configuration.ssl = parameters.ssl
+            configuration.ssl = true
             configuration.credential = credential
             return configuration
         }
@@ -124,7 +123,7 @@ enum PostgresConnectionService {
         case .unsupportedAuthenticationType(let type):
             return "The server requires an unsupported authentication type (\(type))."
         case .sslError:
-            return "SSL/TLS negotiation failed. Try turning off \u{201C}Use SSL/TLS\u{201D}, or confirm the server supports SSL."
+            return "SSL/TLS negotiation failed. Confirm the server supports SSL."
         case .socketError:
             return "Couldn\u{2019}t reach the server. Check the host and port and that it\u{2019}s reachable from this device."
         case .serverError(let description):
