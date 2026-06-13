@@ -21,6 +21,7 @@ struct AddDatabaseView: View {
     @State private var databases: [String] = []
     @State private var newDatabase = ""
     @State private var ssl = true
+    @State private var revealPassword = false
     @State private var test = TestPhase.idle
     @State private var confirmDelete = false
 
@@ -150,8 +151,26 @@ struct AddDatabaseView: View {
                     .monospacedField()
             }
             LabeledContent("Password") {
-                SecureField("Required", text: $password)
+                HStack(spacing: 8) {
+                    Group {
+                        if revealPassword {
+                            TextField("Required", text: $password)
+                        } else {
+                            SecureField("Required", text: $password)
+                        }
+                    }
                     .multilineTextAlignment(.trailing)
+                    .autocorrectionDisabled()
+                    .textInputAutocapitalization(.never)
+                    Button {
+                        revealPassword.toggle()
+                    } label: {
+                        Image(systemName: revealPassword ? "eye.slash" : "eye")
+                            .foregroundStyle(.secondary)
+                    }
+                    .buttonStyle(.borderless)
+                    .accessibilityLabel(revealPassword ? "Hide password" : "Show password")
+                }
             }
             Toggle("Use SSL/TLS", isOn: $ssl)
         }
