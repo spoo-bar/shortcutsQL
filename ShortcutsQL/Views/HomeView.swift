@@ -26,10 +26,6 @@ struct HomeView: View {
                                     onOpen: { onOpen(query) }
                                 )
                             }
-                            Text("Saved queries run against their selected database.")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                                .padding(.top, 2)
                         }
                         .padding(.horizontal, 16)
                         .padding(.bottom, 28)
