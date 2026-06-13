@@ -1,11 +1,12 @@
 import Testing
+import Foundation
 @testable import ShortcutsQL
 
 @Suite("SQL validation")
 struct SQLValidatorTests {
     @Test("Well-formed SELECT passes")
     func validSelect() {
-        #expect(SQLValidator.validate(MockData.queries[0].sql) == nil)
+        #expect(SQLValidator.validate("SELECT count(*) AS signups FROM users WHERE created_at >= current_date;") == nil)
     }
 
     @Test("Literal SELECT without FROM passes")
@@ -54,69 +55,166 @@ struct SQLValidatorTests {
     }
 }
 
-@Suite("Result shape")
-struct ResultShapeTests {
-    @Test("Single aggregate is a scalar")
-    func scalar() {
-        #expect(ResultShape.shape(of: "SELECT count(*) AS signups FROM users") == .scalar)
+@Suite("Codable models")
+struct CodableModelTests {
+    @Test("DatabaseServer round-trips through JSON")
+    func databaseServerRoundTrip() throws {
+        let server = DatabaseServer(
+            id: "s1", name: "prod", engine: "PostgreSQL", host: "db.internal:5432",
+            ssl: true, color: .blue, databases: [ServerDatabase(name: "app_production")]
+        )
+        let data = try JSONEncoder().encode(server)
+        let decoded = try JSONDecoder().decode(DatabaseServer.self, from: data)
+        #expect(decoded == server)
     }
 
-    @Test("Few columns is a narrow table")
-    func narrow() {
-        #expect(ResultShape.shape(of: "SELECT name, mrr_usd FROM accounts") == .narrow)
+    @Test("SavedQuery round-trips through JSON")
+    func savedQueryRoundTrip() throws {
+        let query = SavedQuery(
+            id: "q1", name: "Signups", serverName: "prod", database: "app_production",
+            sql: "SELECT 1;", lastRun: "—", duration: "—", rowsLabel: "—"
+        )
+        let data = try JSONEncoder().encode(query)
+        let decoded = try JSONDecoder().decode(SavedQuery.self, from: data)
+        #expect(decoded == query)
+    }
+}
+
+@Suite("Keychain credential storage")
+struct KeychainStoreTests {
+    /// A unique id per test so concurrently-run tests don't collide, with
+    /// cleanup of the Keychain item afterwards.
+    private func withTemporaryID(_ body: (String) -> Void) {
+        let id = "test-\(UUID().uuidString)"
+        defer { KeychainStore.delete(for: id) }
+        body(id)
     }
 
-    @Test("The 12-column export is a wide table")
-    func wide() {
-        let query = MockData.queries.first { $0.id == "subs" }!
-        #expect(ResultShape.shape(of: query.sql) == .wide)
-        #expect(ResultShape.selectColumnCount(query.sql) == 12)
+    @Test("Saved credentials round-trip")
+    func roundTrip() {
+        withTemporaryID { id in
+            let credentials = ServerCredentials(user: "readonly", password: "hunter2hunter2")
+            #expect(KeychainStore.save(credentials, for: id))
+            #expect(KeychainStore.read(for: id) == credentials)
+        }
     }
 
-    @Test("Commas inside parens don't count as columns")
-    func nestedParens() {
-        #expect(ResultShape.selectColumnCount("SELECT round(sum(amount)/100.0, 0) AS mrr FROM s") == 1)
+    @Test("Saving again overwrites the previous value")
+    func overwrite() {
+        withTemporaryID { id in
+            KeychainStore.save(ServerCredentials(user: "a", password: "1"), for: id)
+            KeychainStore.save(ServerCredentials(user: "b", password: "2"), for: id)
+            #expect(KeychainStore.read(for: id) == ServerCredentials(user: "b", password: "2"))
+        }
+    }
+
+    @Test("Reading an unknown id returns nil")
+    func missing() {
+        #expect(KeychainStore.read(for: "test-does-not-exist-\(UUID().uuidString)") == nil)
+    }
+
+    @Test("Deleting removes the credentials")
+    func delete() {
+        withTemporaryID { id in
+            KeychainStore.save(ServerCredentials(user: "a", password: "1"), for: id)
+            KeychainStore.delete(for: id)
+            #expect(KeychainStore.read(for: id) == nil)
+        }
     }
 }
 
 @Suite("Query store")
 struct QueryStoreTests {
+    /// A store backed by an isolated UserDefaults suite so tests don't touch
+    /// (or depend on) real persisted data.
+    private func makeStore() -> (QueryStore, UserDefaults) {
+        let defaults = UserDefaults(suiteName: "test-\(UUID().uuidString)")!
+        return (QueryStore(defaults: defaults), defaults)
+    }
+
+    private func sampleQuery(id: String, name: String = "Query") -> SavedQuery {
+        SavedQuery(id: id, name: name, serverName: "prod", database: "app_production",
+                   sql: "SELECT count(*) FROM trials;", lastRun: "—", duration: "—", rowsLabel: "—")
+    }
+
+    private func sampleServer(id: String, name: String = "prod") -> DatabaseServer {
+        DatabaseServer(id: id, name: name, engine: "PostgreSQL", host: "db.internal:5432",
+                       ssl: true, color: .blue, databases: [ServerDatabase(name: "app_production")])
+    }
+
     @Test("Saving a new query prepends it")
     func saveNew() {
-        let store = QueryStore()
-        let initialCount = store.queries.count
-        let query = SavedQuery(id: "new", name: "Active trials",
-                               serverName: "prod-readonly", database: "app_production",
-                               sql: "SELECT count(*) FROM trials;",
-                               lastRun: "just now", duration: "84 ms", rowsLabel: "1 row")
-        store.save(query)
-        #expect(store.queries.count == initialCount + 1)
+        let (store, _) = makeStore()
+        store.save(sampleQuery(id: "new"))
+        #expect(store.queries.count == 1)
         #expect(store.queries.first?.id == "new")
     }
 
     @Test("Saving an existing query updates it in place")
     func saveExisting() {
-        let store = QueryStore()
-        let initialCount = store.queries.count
-        var query = store.queries[2]
-        query.name = "Renamed"
-        store.save(query)
-        #expect(store.queries.count == initialCount)
-        #expect(store.queries[2].name == "Renamed")
+        let (store, _) = makeStore()
+        store.save(sampleQuery(id: "a", name: "First"))
+        store.save(sampleQuery(id: "b", name: "Second"))
+        store.save(sampleQuery(id: "a", name: "Renamed"))
+        #expect(store.queries.count == 2)
+        #expect(store.queries.first { $0.id == "a" }?.name == "Renamed")
     }
 
     @Test("Deleting removes the query")
-    func delete() {
-        let store = QueryStore()
-        let id = store.queries[0].id
-        store.deleteQuery(id: id)
-        #expect(!store.queries.contains { $0.id == id })
+    func deleteQuery() {
+        let (store, _) = makeStore()
+        store.save(sampleQuery(id: "a"))
+        store.deleteQuery(id: "a")
+        #expect(store.queries.isEmpty)
     }
 
-    @Test("Database user falls back to the server's")
-    func databaseUser() {
-        let server = MockData.servers[0]
-        #expect(server.user(forDatabase: "app_billing") == "billing_ro")
-        #expect(server.user(forDatabase: "app_production") == "readonly")
+    @Test("Queries persist across store instances")
+    func queriesPersist() {
+        let (store, defaults) = makeStore()
+        store.save(sampleQuery(id: "a", name: "Kept"))
+        let reloaded = QueryStore(defaults: defaults)
+        #expect(reloaded.queries.first { $0.id == "a" }?.name == "Kept")
+    }
+
+    @Test("Servers persist across store instances")
+    func serversPersist() {
+        let (store, defaults) = makeStore()
+        let id = "srv-\(UUID().uuidString)"
+        defer { store.deleteServer(id: id) }
+        store.saveServer(sampleServer(id: id, name: "Kept"), credentials: ServerCredentials(user: "u", password: "p"))
+        let reloaded = QueryStore(defaults: defaults)
+        #expect(reloaded.servers.first { $0.id == id }?.name == "Kept")
+    }
+
+    @Test("Saving a server stores its credentials in the Keychain")
+    func serverCredentialsRoundTrip() {
+        let (store, _) = makeStore()
+        let id = "srv-\(UUID().uuidString)"
+        defer { store.deleteServer(id: id) }
+        let credentials = ServerCredentials(user: "readonly", password: "hunter2hunter2")
+        store.saveServer(sampleServer(id: id), credentials: credentials)
+        #expect(store.credentials(for: id) == credentials)
+    }
+
+    @Test("Deleting a server also clears its credentials")
+    func deleteServerClearsCredentials() {
+        let (store, _) = makeStore()
+        let id = "srv-\(UUID().uuidString)"
+        store.saveServer(sampleServer(id: id), credentials: ServerCredentials(user: "u", password: "p"))
+        store.deleteServer(id: id)
+        #expect(store.servers.contains { $0.id == id } == false)
+        #expect(store.credentials(for: id) == nil)
+    }
+
+    @Test("The password is never written to UserDefaults in plaintext")
+    func passwordNotPersistedInPlaintext() {
+        let (store, defaults) = makeStore()
+        let id = "srv-\(UUID().uuidString)"
+        defer { store.deleteServer(id: id) }
+        let password = "sup3r-s3cret-\(UUID().uuidString)"
+        store.saveServer(sampleServer(id: id), credentials: ServerCredentials(user: "specialuser", password: password))
+        let persisted = defaults.data(forKey: "servers").flatMap { String(data: $0, encoding: .utf8) } ?? ""
+        #expect(!persisted.contains(password))
+        #expect(!persisted.contains("specialuser"))
     }
 }
