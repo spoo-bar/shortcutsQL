@@ -95,7 +95,7 @@ struct AddDatabaseView: View {
                 }
                 ToolbarItem(placement: .topBarTrailing) {
                     Button("Save", action: save)
-                        .disabled(databases.isEmpty || test != .ok)
+                        .disabled(test != .ok)
                 }
             }
             .onChange(of: host) { test = .idle }
@@ -241,7 +241,7 @@ struct AddDatabaseView: View {
             Button {
                 runTest()
             } label: {
-                Label(test == .running ? "Testing…" : "Test connection",
+                Label(test == .running ? "Testing…" : "Test Connection",
                       systemImage: "arrow.clockwise")
                     .frame(maxWidth: .infinity)
             }
