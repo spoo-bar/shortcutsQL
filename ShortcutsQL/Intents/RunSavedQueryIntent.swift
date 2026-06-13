@@ -2,24 +2,29 @@ import AppIntents
 import Foundation
 
 /// Shortcuts action: run a saved query against its server/database and return
-/// the result as text the rest of the shortcut pipeline can use.
+/// the rows as JSON for the rest of the shortcut pipeline.
+///
+/// The query is selected by name via a dynamic options picker rather than an
+/// AppEntity parameter: an intent whose only parameter is an AppEntity makes
+/// Shortcuts surface that entity as the action's output instead of the
+/// returned value, so a plain String parameter is used here.
 struct RunSavedQueryIntent: AppIntent {
     static let title: LocalizedStringResource = "Run Saved Query"
     static let description = IntentDescription(
         "Runs one of your saved SQL queries against its database and returns the rows as JSON."
     )
 
-    @Parameter(title: "Query")
-    var query: SavedQueryEntity
+    @Parameter(title: "Query", optionsProvider: SavedQueryOptionsProvider())
+    var queryName: String
 
     static var parameterSummary: some ParameterSummary {
-        Summary("Run \(\.$query)")
+        Summary("Run \(\.$queryName)")
     }
 
     func perform() async throws -> some IntentResult & ReturnsValue<String> {
         let store = QueryStore()
-        guard let saved = store.queries.first(where: { $0.id == query.id }) else {
-            throw ConnectionError(message: "That query no longer exists.")
+        guard let saved = store.queries.first(where: { $0.name == queryName }) else {
+            throw ConnectionError(message: "No saved query named \u{201C}\(queryName)\u{201D}.")
         }
         guard let parameters = store.connectionParameters(for: saved) else {
             throw ConnectionError(
@@ -39,5 +44,12 @@ struct RunSavedQueryIntent: AppIntent {
         )
 
         return .result(value: result.table.json)
+    }
+}
+
+/// Supplies the saved query names for the Shortcuts picker.
+struct SavedQueryOptionsProvider: DynamicOptionsProvider {
+    func results() async throws -> [String] {
+        QueryStore().queries.map(\.name)
     }
 }
