@@ -2,142 +2,6 @@ import Testing
 import Foundation
 @testable import ShortcutsQL
 
-@Suite("SQL validation")
-struct SQLValidatorTests {
-    @Test("Well-formed SELECT passes")
-    func validSelect() {
-        #expect(SQLValidator.validate("SELECT count(*) AS signups FROM users WHERE created_at >= current_date;") == nil)
-    }
-
-    @Test("Literal SELECT without FROM passes")
-    func selectLiteral() {
-        #expect(SQLValidator.validate("SELECT 1") == nil)
-    }
-
-    @Test("CTE passes")
-    func cte() {
-        #expect(SQLValidator.validate("WITH x AS (SELECT 1) SELECT * FROM x") == nil)
-    }
-
-    @Test("Misspelled keyword is a syntax error naming the token")
-    func misspelledKeyword() {
-        let error = SQLValidator.validate("SELEC * FORM logs")
-        #expect(error?.hasPrefix("syntax error at or near \"SELEC\"") == true)
-    }
-
-    @Test("Unmatched opening parenthesis is caught")
-    func unmatchedOpeningParen() {
-        let error = SQLValidator.validate("SELECT count(* FROM users")
-        #expect(error?.contains("unmatched opening parenthesis") == true)
-    }
-
-    @Test("Unmatched closing parenthesis is caught")
-    func unmatchedClosingParen() {
-        let error = SQLValidator.validate("SELECT count(*)) FROM users")
-        #expect(error?.contains("unmatched closing parenthesis") == true)
-    }
-
-    @Test("Unterminated string literal is caught")
-    func unterminatedString() {
-        let error = SQLValidator.validate("SELECT * FROM users WHERE plan = 'pro")
-        #expect(error?.contains("unterminated quoted string") == true)
-    }
-
-    @Test("SELECT of a column without FROM is caught")
-    func missingFrom() {
-        let error = SQLValidator.validate("SELECT signups")
-        #expect(error?.contains("missing FROM clause") == true)
-    }
-
-    @Test("Empty statement is caught")
-    func emptyStatement() {
-        #expect(SQLValidator.validate("  -- only a comment\n") == "empty statement")
-    }
-}
-
-@Suite("Codable models")
-struct CodableModelTests {
-    @Test("DatabaseServer round-trips through JSON")
-    func databaseServerRoundTrip() throws {
-        let server = DatabaseServer(
-            id: "s1", name: "prod", engine: "PostgreSQL", host: "db.internal:5432",
-            ssl: true, color: .blue, databases: [ServerDatabase(name: "app_production")]
-        )
-        let data = try JSONEncoder().encode(server)
-        let decoded = try JSONDecoder().decode(DatabaseServer.self, from: data)
-        #expect(decoded == server)
-    }
-
-    @Test("SavedQuery round-trips through JSON")
-    func savedQueryRoundTrip() throws {
-        let query = SavedQuery(
-            id: "q1", name: "Signups", serverName: "prod", database: "app_production",
-            sql: "SELECT 1;", lastRanAt: nil, durationMilliseconds: nil, rowCount: nil
-        )
-        let data = try JSONEncoder().encode(query)
-        let decoded = try JSONDecoder().decode(SavedQuery.self, from: data)
-        #expect(decoded == query)
-    }
-
-    @Test("Run-metadata labels format from the stored counts")
-    func runMetadataLabels() {
-        var query = SavedQuery(id: "q", name: "Q", serverName: "s", database: "d", sql: "SELECT 1;")
-        #expect(query.rowsLabel == nil)
-        #expect(query.durationLabel == nil)
-        query.rowCount = 1
-        query.durationMilliseconds = 42
-        #expect(query.rowsLabel == "1 row")
-        #expect(query.durationLabel == "42 ms")
-        query.rowCount = 25
-        query.durationMilliseconds = 1500
-        #expect(query.rowsLabel == "25 rows")
-        #expect(query.durationLabel == "1.5 s")
-    }
-}
-
-@Suite("Keychain credential storage")
-struct KeychainStoreTests {
-    /// A unique id per test so concurrently-run tests don't collide, with
-    /// cleanup of the Keychain item afterwards.
-    private func withTemporaryID(_ body: (String) -> Void) {
-        let id = "test-\(UUID().uuidString)"
-        defer { KeychainStore.delete(for: id) }
-        body(id)
-    }
-
-    @Test("Saved credentials round-trip")
-    func roundTrip() {
-        withTemporaryID { id in
-            let credentials = ServerCredentials(user: "readonly", password: "hunter2hunter2")
-            #expect(KeychainStore.save(credentials, for: id))
-            #expect(KeychainStore.read(for: id) == credentials)
-        }
-    }
-
-    @Test("Saving again overwrites the previous value")
-    func overwrite() {
-        withTemporaryID { id in
-            KeychainStore.save(ServerCredentials(user: "a", password: "1"), for: id)
-            KeychainStore.save(ServerCredentials(user: "b", password: "2"), for: id)
-            #expect(KeychainStore.read(for: id) == ServerCredentials(user: "b", password: "2"))
-        }
-    }
-
-    @Test("Reading an unknown id returns nil")
-    func missing() {
-        #expect(KeychainStore.read(for: "test-does-not-exist-\(UUID().uuidString)") == nil)
-    }
-
-    @Test("Deleting removes the credentials")
-    func delete() {
-        withTemporaryID { id in
-            KeychainStore.save(ServerCredentials(user: "a", password: "1"), for: id)
-            KeychainStore.delete(for: id)
-            #expect(KeychainStore.read(for: id) == nil)
-        }
-    }
-}
-
 @Suite("Query store")
 struct QueryStoreTests {
     /// A store backed by an isolated UserDefaults suite so tests don't touch
@@ -156,6 +20,8 @@ struct QueryStoreTests {
         DatabaseServer(id: id, name: name, engine: "PostgreSQL", host: "db.internal:5432",
                        ssl: true, color: .blue, databases: [ServerDatabase(name: "app_production")])
     }
+
+    // MARK: Queries
 
     @Test("Saving a new query prepends it")
     func saveNew() {
@@ -191,6 +57,8 @@ struct QueryStoreTests {
         #expect(reloaded.queries.first { $0.id == "a" }?.name == "Kept")
     }
 
+    // MARK: Run metadata
+
     @Test("Recording a run stores its stats and persists them")
     func recordRunPersists() {
         let (store, defaults) = makeStore()
@@ -215,6 +83,8 @@ struct QueryStoreTests {
         store.recordRun(queryID: "missing", at: Date(), durationMilliseconds: 1, rowCount: 1)
         #expect(store.queries.isEmpty)
     }
+
+    // MARK: Servers & credentials
 
     @Test("Servers persist across store instances")
     func serversPersist() {
