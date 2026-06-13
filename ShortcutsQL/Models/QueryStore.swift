@@ -38,6 +38,17 @@ final class QueryStore {
         persistQueries()
     }
 
+    /// Records the outcome of running a saved query so the Home screen can
+    /// show its last-run time, row count, and duration. No-op for queries
+    /// that aren't saved yet.
+    func recordRun(queryID: String, at date: Date, durationMilliseconds: Int, rowCount: Int) {
+        guard let index = queries.firstIndex(where: { $0.id == queryID }) else { return }
+        queries[index].lastRanAt = date
+        queries[index].durationMilliseconds = durationMilliseconds
+        queries[index].rowCount = rowCount
+        persistQueries()
+    }
+
     // MARK: Servers
 
     /// Updates an existing server in place (or appends a new one) and stores

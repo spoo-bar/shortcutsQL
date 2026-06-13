@@ -17,13 +17,14 @@ struct QueryEditorView: View {
     @State private var phase = RunPhase.idle
     @State private var activePicker: PickerKind?
     @State private var confirmDelete = false
+    @State private var lastRanAt: Date?
 
     private enum RunPhase: Equatable {
         case idle
         case invalid(String)
         case running
         case failed(String)
-        case success(ResultTable)
+        case success(ResultTable, durationMilliseconds: Int)
     }
 
     private enum PickerKind: String, Identifiable {
@@ -176,28 +177,29 @@ struct QueryEditorView: View {
     @ViewBuilder
     private var resultSection: some View {
         switch phase {
-        case .success(let table) where table.rows.isEmpty:
+        case .success(let table, let ms) where table.rows.isEmpty:
             Section {
                 Text("Query ran successfully. No rows returned.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .frame(maxWidth: .infinity, alignment: .leading)
             } header: {
-                ResultSectionHeader(badgeText: "OK", badgeTone: .success, meta: "0 rows")
+                ResultSectionHeader(badgeText: "OK", badgeTone: .success, meta: "0 rows · \(ms) ms")
             }
-        case .success(let table) where table.columns.count == 1 && table.rows.count == 1:
+        case .success(let table, let ms) where table.columns.count == 1 && table.rows.count == 1:
             Section {
                 ScalarResultView(value: table.rows[0][0], unit: table.columns[0].name)
             } header: {
-                ResultSectionHeader(badgeText: "OK", badgeTone: .success, meta: table.countLabel)
+                ResultSectionHeader(badgeText: "OK", badgeTone: .success,
+                                    meta: "\(table.countLabel) · \(ms) ms")
             }
-        case .success(let table):
+        case .success(let table, let ms):
             Section {
                 ResultTableView(table: table)
                     .listRowInsets(EdgeInsets())
             } header: {
                 ResultSectionHeader(badgeText: "OK", badgeTone: .success,
-                                    meta: "\(table.countLabel) · \(table.columns.count) cols")
+                                    meta: "\(table.countLabel) · \(table.columns.count) cols · \(ms) ms")
             } footer: {
                 if table.columns.count >= 8 {
                     Text("Swipe the table sideways to see all \(table.columns.count) columns.")
@@ -280,9 +282,18 @@ struct QueryEditorView: View {
         phase = .running
         Task {
             do {
-                let table = try await PostgresConnectionService.runQuery(sqlText, parameters)
+                let result = try await PostgresConnectionService.runQuery(sqlText, parameters)
                 guard phase == .running else { return }
-                phase = .success(table)
+                let ranAt = Date()
+                lastRanAt = ranAt
+                phase = .success(result.table, durationMilliseconds: result.durationMilliseconds)
+                // Persist run stats immediately for an already-saved query so
+                // the Home screen reflects this execution.
+                if let id = query?.id {
+                    store.recordRun(queryID: id, at: ranAt,
+                                    durationMilliseconds: result.durationMilliseconds,
+                                    rowCount: result.table.rows.count)
+                }
             } catch {
                 guard phase == .running else { return }
                 phase = .failed(error.localizedDescription)
@@ -292,11 +303,15 @@ struct QueryEditorView: View {
 
     private func save() {
         let trimmedName = name.trimmingCharacters(in: .whitespacesAndNewlines)
-        var lastRun = "—"
-        var rowsLabel = "—"
-        if case .success(let table) = phase {
-            lastRun = "just now"
-            rowsLabel = table.countLabel
+        // Carry over any existing run stats; overwrite them if this session
+        // produced a fresh successful run.
+        var ranAt = query?.lastRanAt
+        var durationMilliseconds = query?.durationMilliseconds
+        var rowCount = query?.rowCount
+        if case .success(let table, let ms) = phase {
+            ranAt = lastRanAt
+            durationMilliseconds = ms
+            rowCount = table.rows.count
         }
         store.save(SavedQuery(
             id: query?.id ?? "q\(Int(Date().timeIntervalSince1970 * 1000))",
@@ -304,9 +319,9 @@ struct QueryEditorView: View {
             serverName: server?.name ?? "",
             database: database,
             sql: sql.trimmingCharacters(in: .whitespacesAndNewlines),
-            lastRun: lastRun,
-            duration: "—",
-            rowsLabel: rowsLabel
+            lastRanAt: ranAt,
+            durationMilliseconds: durationMilliseconds,
+            rowCount: rowCount
         ))
         dismiss()
         notify("Query \u{201C}\(trimmedName)\u{201D} \(isEditing ? "updated" : "saved").")
@@ -330,7 +345,7 @@ struct QueryEditorView: View {
         query: SavedQuery(
             id: "demo", name: "Daily signups", serverName: "", database: "",
             sql: "SELECT count(*) AS signups\nFROM users\nWHERE created_at >= current_date;",
-            lastRun: "—", duration: "—", rowsLabel: "—"
+            lastRanAt: nil, durationMilliseconds: nil, rowCount: nil
         ),
         notify: { _ in }
     )

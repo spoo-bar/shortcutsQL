@@ -34,15 +34,19 @@ enum PostgresConnectionService {
     }
 
     /// Runs `sql` against the server/database in `parameters` and returns the
-    /// rows as a `ResultTable`. Throws a `ConnectionError` with a readable
-    /// message on failure.
-    static func runQuery(_ sql: String, _ parameters: ConnectionParameters) async throws -> ResultTable {
+    /// rows plus how long execution took (in milliseconds, excluding connection
+    /// setup). Throws a `ConnectionError` with a readable message on failure.
+    static func runQuery(
+        _ sql: String, _ parameters: ConnectionParameters
+    ) async throws -> (table: ResultTable, durationMilliseconds: Int) {
         try await Task.detached(priority: .userInitiated) {
             do {
                 let connection = try openConnection(parameters)
                 defer { connection.close() }
                 let statement = try connection.prepareStatement(text: sql)
                 defer { statement.close() }
+
+                let start = Date()
                 let cursor = try statement.execute(retrieveColumnMetadata: true)
                 defer { cursor.close() }
 
@@ -51,6 +55,7 @@ enum PostgresConnectionService {
                     let row = try result.get()
                     rows.append(row.columns.map { $0.rawValue ?? "NULL" })
                 }
+                let durationMilliseconds = Int(Date().timeIntervalSince(start) * 1000)
 
                 let names = cursor.columns?.map(\.name)
                     ?? (0..<(rows.first?.count ?? 0)).map { "column\($0 + 1)" }
@@ -58,7 +63,8 @@ enum PostgresConnectionService {
                     ResultColumn(name: name, isNumeric: isNumericColumn(rows, index))
                 }
                 let countLabel = rows.count == 1 ? "1 row" : "\(rows.count) rows"
-                return ResultTable(columns: columns, rows: rows, countLabel: countLabel)
+                let table = ResultTable(columns: columns, rows: rows, countLabel: countLabel)
+                return (table, durationMilliseconds)
             } catch {
                 throw ConnectionError(message: readableMessage(for: error))
             }

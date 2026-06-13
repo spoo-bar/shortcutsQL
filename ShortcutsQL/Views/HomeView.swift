@@ -53,6 +53,12 @@ private struct QueryCard: View {
     let serverColor: Color
     let onOpen: () -> Void
 
+    private static let relativeFormatter: RelativeDateTimeFormatter = {
+        let formatter = RelativeDateTimeFormatter()
+        formatter.unitsStyle = .abbreviated
+        return formatter
+    }()
+
     var body: some View {
         Button(action: onOpen) {
             VStack(alignment: .leading, spacing: 10) {
@@ -77,9 +83,13 @@ private struct QueryCard: View {
                 HStack(spacing: 7) {
                     Image(systemName: "clock")
                         .font(.caption2)
-                    Text(query.lastRun)
-                    Text("·")
-                    Text("\(query.rowsLabel) · \(query.duration)")
+                    if let ranAt = query.lastRanAt {
+                        Text(Self.relativeFormatter.localizedString(for: ranAt, relativeTo: Date()))
+                        if let rows = query.rowsLabel { Text("·"); Text(rows) }
+                        if let duration = query.durationLabel { Text("·"); Text(duration) }
+                    } else {
+                        Text("Not run yet")
+                    }
                 }
                 .font(.caption)
                 .foregroundStyle(.secondary)

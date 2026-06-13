@@ -45,14 +45,27 @@ struct DatabaseServer: Identifiable, Hashable, Codable {
     }
 }
 
-/// A stored SQL query (a "shortcut").
+/// A stored SQL query (a "shortcut"). The run metadata is recorded each time
+/// the query is executed and is nil until it has run at least once.
 struct SavedQuery: Identifiable, Hashable, Codable {
     let id: String
     var name: String
     var serverName: String
     var database: String
     var sql: String
-    var lastRun: String
-    var duration: String
-    var rowsLabel: String
+    var lastRanAt: Date? = nil
+    var durationMilliseconds: Int? = nil
+    var rowCount: Int? = nil
+
+    /// e.g. "1 row" / "25 rows", or nil if the query hasn't run.
+    var rowsLabel: String? {
+        rowCount.map { $0 == 1 ? "1 row" : "\($0) rows" }
+    }
+
+    /// e.g. "42 ms" / "1.2 s", or nil if the query hasn't run.
+    var durationLabel: String? {
+        durationMilliseconds.map { ms in
+            ms < 1000 ? "\(ms) ms" : String(format: "%.1f s", Double(ms) / 1000)
+        }
+    }
 }

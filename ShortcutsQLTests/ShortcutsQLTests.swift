@@ -72,11 +72,26 @@ struct CodableModelTests {
     func savedQueryRoundTrip() throws {
         let query = SavedQuery(
             id: "q1", name: "Signups", serverName: "prod", database: "app_production",
-            sql: "SELECT 1;", lastRun: "—", duration: "—", rowsLabel: "—"
+            sql: "SELECT 1;", lastRanAt: nil, durationMilliseconds: nil, rowCount: nil
         )
         let data = try JSONEncoder().encode(query)
         let decoded = try JSONDecoder().decode(SavedQuery.self, from: data)
         #expect(decoded == query)
+    }
+
+    @Test("Run-metadata labels format from the stored counts")
+    func runMetadataLabels() {
+        var query = SavedQuery(id: "q", name: "Q", serverName: "s", database: "d", sql: "SELECT 1;")
+        #expect(query.rowsLabel == nil)
+        #expect(query.durationLabel == nil)
+        query.rowCount = 1
+        query.durationMilliseconds = 42
+        #expect(query.rowsLabel == "1 row")
+        #expect(query.durationLabel == "42 ms")
+        query.rowCount = 25
+        query.durationMilliseconds = 1500
+        #expect(query.rowsLabel == "25 rows")
+        #expect(query.durationLabel == "1.5 s")
     }
 }
 
@@ -134,7 +149,7 @@ struct QueryStoreTests {
 
     private func sampleQuery(id: String, name: String = "Query") -> SavedQuery {
         SavedQuery(id: id, name: name, serverName: "prod", database: "app_production",
-                   sql: "SELECT count(*) FROM trials;", lastRun: "—", duration: "—", rowsLabel: "—")
+                   sql: "SELECT count(*) FROM trials;")
     }
 
     private func sampleServer(id: String, name: String = "prod") -> DatabaseServer {
@@ -174,6 +189,31 @@ struct QueryStoreTests {
         store.save(sampleQuery(id: "a", name: "Kept"))
         let reloaded = QueryStore(defaults: defaults)
         #expect(reloaded.queries.first { $0.id == "a" }?.name == "Kept")
+    }
+
+    @Test("Recording a run stores its stats and persists them")
+    func recordRunPersists() {
+        let (store, defaults) = makeStore()
+        store.save(sampleQuery(id: "a"))
+        let ranAt = Date(timeIntervalSince1970: 1_000_000)
+        store.recordRun(queryID: "a", at: ranAt, durationMilliseconds: 42, rowCount: 7)
+
+        let saved = store.queries.first { $0.id == "a" }
+        #expect(saved?.rowCount == 7)
+        #expect(saved?.durationMilliseconds == 42)
+        #expect(saved?.lastRanAt == ranAt)
+
+        // And it survives a reload.
+        let reloaded = QueryStore(defaults: defaults).queries.first { $0.id == "a" }
+        #expect(reloaded?.rowCount == 7)
+        #expect(reloaded?.rowsLabel == "7 rows")
+    }
+
+    @Test("Recording a run for an unknown query is a no-op")
+    func recordRunUnknown() {
+        let (store, _) = makeStore()
+        store.recordRun(queryID: "missing", at: Date(), durationMilliseconds: 1, rowCount: 1)
+        #expect(store.queries.isEmpty)
     }
 
     @Test("Servers persist across store instances")
