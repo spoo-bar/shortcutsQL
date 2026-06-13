@@ -7,6 +7,8 @@ struct HomeView: View {
     let onNew: () -> Void
     let onOpen: (SavedQuery) -> Void
 
+    @Environment(\.scenePhase) private var scenePhase
+
     var body: some View {
         NavigationStack {
             Group {
@@ -41,6 +43,11 @@ struct HomeView: View {
                 }
             }
         }
+        // Refresh run stats whenever Home is shown or the app returns to the
+        // foreground, so runs recorded elsewhere (e.g. the Shortcuts action)
+        // are reflected.
+        .onAppear { store.reload() }
+        .onChange(of: scenePhase) { if scenePhase == .active { store.reload() } }
     }
 }
 

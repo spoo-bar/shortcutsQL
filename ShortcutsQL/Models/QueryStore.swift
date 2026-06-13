@@ -38,6 +38,19 @@ final class QueryStore {
         persistQueries()
     }
 
+    /// Re-reads persisted queries and servers so the UI picks up changes made
+    /// elsewhere — e.g. run stats recorded by the Shortcuts intent while the
+    /// app was backgrounded. Safe because every mutation persists immediately,
+    /// so the store and UserDefaults never diverge.
+    func reload() {
+        if let loaded = Self.load([SavedQuery].self, key: Self.queriesKey, from: defaults) {
+            queries = loaded
+        }
+        if let loaded = Self.load([DatabaseServer].self, key: Self.serversKey, from: defaults) {
+            servers = loaded
+        }
+    }
+
     /// Records the outcome of running a saved query so the Home screen can
     /// show its last-run time, row count, and duration. No-op for queries
     /// that aren't saved yet.
