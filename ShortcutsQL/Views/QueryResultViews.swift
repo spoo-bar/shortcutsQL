@@ -2,11 +2,14 @@ import SwiftUI
 
 /// Big mono number for single-aggregate results.
 struct ScalarResultView: View {
+    let value: String
+    let unit: String
+
     var body: some View {
         HStack(alignment: .firstTextBaseline, spacing: 8) {
-            Text(MockResults.scalarValue)
+            Text(value)
                 .font(.system(size: 44, weight: .semibold, design: .monospaced))
-            Text(MockResults.scalarUnit)
+            Text(unit)
                 .font(.system(.footnote, design: .monospaced))
                 .foregroundStyle(.secondary)
         }
@@ -83,17 +86,29 @@ struct ResultSectionHeader: View {
 }
 
 #Preview {
-    Form {
+    let sampleTable = ResultTable(
+        columns: [
+            ResultColumn(name: "account", isNumeric: false),
+            ResultColumn(name: "seats", isNumeric: true),
+            ResultColumn(name: "mrr_usd", isNumeric: true),
+        ],
+        rows: [
+            ["acme-corp", "120", "12,400"],
+            ["initech", "64", "9,820"],
+        ],
+        countLabel: "2 rows"
+    )
+    return Form {
         Section {
-            ScalarResultView()
+            ScalarResultView(value: "1,284", unit: "signups")
         } header: {
             ResultSectionHeader(badgeText: "OK", badgeTone: .success, meta: "1 row · 84 ms")
         }
         Section {
-            ResultTableView(table: MockResults.wideTable)
+            ResultTableView(table: sampleTable)
                 .listRowInsets(EdgeInsets())
         } header: {
-            ResultSectionHeader(badgeText: "OK", badgeTone: .success, meta: "50 rows · 12 cols · 84 ms")
+            ResultSectionHeader(badgeText: "OK", badgeTone: .success, meta: "2 rows · 3 cols · 84 ms")
         }
         Section {
             ErrorMessageView(message: "syntax error at or near \"SELEC\"\nLINE 1: SELEC …\n        ^")

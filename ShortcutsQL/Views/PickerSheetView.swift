@@ -70,9 +70,10 @@ struct PickerSheetView: View {
 #Preview {
     PickerSheetView(
         title: "Server",
-        options: MockData.servers.map {
-            PickerOption(id: $0.id, label: $0.name, subtitle: "\($0.engine) · \($0.host)", color: $0.color.color)
-        },
+        options: [
+            PickerOption(id: "prod", label: "prod-readonly", subtitle: "PostgreSQL · db.internal:5432", color: .blue),
+            PickerOption(id: "stg", label: "staging", subtitle: "PostgreSQL · stg.internal:5432", color: .orange),
+        ],
         selection: "prod",
         onSelect: { _ in }
     )

@@ -36,20 +36,18 @@ struct QueryEditorView: View {
         self.query = query
         self.notify = notify
         let server = query.flatMap { q in store.servers.first { $0.name == q.serverName } }
-            ?? store.servers[0]
+            ?? store.servers.first
         _name = State(initialValue: query?.name ?? "")
-        _serverID = State(initialValue: server.id)
-        _database = State(initialValue: query?.database ?? server.databases[0].name)
+        _serverID = State(initialValue: server?.id ?? "")
+        _database = State(initialValue: query?.database ?? server?.databases.first?.name ?? "")
         _sql = State(initialValue: query?.sql ?? "")
     }
 
     private var isEditing: Bool { query != nil }
 
-    private var server: DatabaseServer {
-        store.servers.first { $0.id == serverID } ?? store.servers[0]
+    private var server: DatabaseServer? {
+        store.servers.first { $0.id == serverID } ?? store.servers.first
     }
-
-    private var databaseUser: String { server.user(forDatabase: database) }
 
     private var canRun: Bool {
         !sql.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
@@ -75,20 +73,22 @@ struct QueryEditorView: View {
                     Button {
                         activePicker = .server
                     } label: {
-                        pickerRow(title: "Server", value: server.name) {
+                        pickerRow(title: "Server", value: server?.name ?? "None") {
                             Circle()
-                                .fill(server.color.color)
+                                .fill(server?.color.color ?? .secondary)
                                 .frame(width: 10, height: 10)
                         }
                     }
+                    .disabled(store.servers.isEmpty)
                     Button {
                         activePicker = .database
                     } label: {
-                        pickerRow(title: "Database", value: database) {
+                        pickerRow(title: "Database", value: database.isEmpty ? "None" : database) {
                             Image(systemName: "cylinder.split.1x2")
                                 .foregroundStyle(.secondary)
                         }
                     }
+                    .disabled(server?.databases.isEmpty ?? true)
                 }
 
                 Section("Query") {
@@ -154,9 +154,9 @@ struct QueryEditorView: View {
                 case .database:
                     PickerSheetView(
                         title: "Database",
-                        options: server.databases.map {
+                        options: (server?.databases ?? []).map {
                             PickerOption(id: $0.name, label: $0.name,
-                                         color: server.color.color)
+                                         color: server?.color.color)
                         },
                         selection: database,
                         onSelect: { database = $0; phase = .idle }
@@ -177,29 +177,14 @@ struct QueryEditorView: View {
     private var resultSection: some View {
         switch phase {
         case .tested:
-            let shape = ResultShape.shape(of: sql)
-            if shape == .scalar {
-                Section {
-                    ScalarResultView()
-                } header: {
-                    ResultSectionHeader(badgeText: "OK", badgeTone: .success,
-                                        meta: "\(MockResults.scalarCountLabel) · 84 ms")
-                }
-            } else {
-                let table = MockResults.table(for: shape)
-                Section {
-                    ResultTableView(table: table)
-                        .listRowInsets(EdgeInsets())
-                } header: {
-                    ResultSectionHeader(badgeText: "OK", badgeTone: .success,
-                                        meta: "\(table.countLabel) · \(table.columns.count) cols · 84 ms")
-                } footer: {
-                    if shape == .wide {
-                        Text("Swipe the table sideways to see all \(table.columns.count) columns.")
-                            .frame(maxWidth: .infinity)
-                            .multilineTextAlignment(.center)
-                    }
-                }
+            Section {
+                Text("SQL is valid. Results will appear here once database execution is wired up.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            } header: {
+                ResultSectionHeader(badgeText: "VALIDATED", badgeTone: .success,
+                                    meta: "not yet executed")
             }
         case .invalid(let message):
             Section {
@@ -246,7 +231,7 @@ struct QueryEditorView: View {
 
     private func selectServer(_ id: String) {
         serverID = id
-        database = server.databases[0].name
+        database = store.servers.first { $0.id == id }?.databases.first?.name ?? ""
         phase = .idle
     }
 
@@ -255,35 +240,23 @@ struct QueryEditorView: View {
             phase = .invalid(error)
             return
         }
-        phase = .running
-        // Prototype rule: the staging server is unreachable — running against
-        // it demonstrates the query-failure state.
-        let failure = server.name == "staging"
-            ? "could not connect to server: connection timed out\n\t\(server.host) · database \"\(database)\" as \"\(databaseUser)\""
-            : nil
-        Task {
-            try? await Task.sleep(for: .milliseconds(850))
-            guard phase == .running else { return }
-            if let failure {
-                phase = .failed(failure)
-            } else {
-                phase = .tested
-            }
-        }
+        // No database connection yet — this only validates the SQL. Execution
+        // (and the .running / .failed states) will be wired up with the real
+        // database integration.
+        phase = .tested
     }
 
     private func save() {
         let trimmedName = name.trimmingCharacters(in: .whitespacesAndNewlines)
-        let shape = ResultShape.shape(of: sql)
         store.save(SavedQuery(
             id: query?.id ?? "q\(Int(Date().timeIntervalSince1970 * 1000))",
             name: trimmedName,
-            serverName: server.name,
+            serverName: server?.name ?? "",
             database: database,
             sql: sql.trimmingCharacters(in: .whitespacesAndNewlines),
-            lastRun: "just now",
-            duration: "84 ms",
-            rowsLabel: MockResults.rowsLabel(for: shape)
+            lastRun: "—",
+            duration: "—",
+            rowsLabel: "—"
         ))
         dismiss()
         notify("Query \u{201C}\(trimmedName)\u{201D} \(isEditing ? "updated" : "saved").")
@@ -302,5 +275,13 @@ struct QueryEditorView: View {
 }
 
 #Preview("Edit query") {
-    QueryEditorView(store: QueryStore(), query: MockData.queries[3], notify: { _ in })
+    QueryEditorView(
+        store: QueryStore(),
+        query: SavedQuery(
+            id: "demo", name: "Daily signups", serverName: "", database: "",
+            sql: "SELECT count(*) AS signups\nFROM users\nWHERE created_at >= current_date;",
+            lastRun: "—", duration: "—", rowsLabel: "—"
+        ),
+        notify: { _ in }
+    )
 }

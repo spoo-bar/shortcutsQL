@@ -51,6 +51,17 @@ struct CollapsibleSQLView: View {
 }
 
 #Preview {
-    CollapsibleSQLView(sql: MockData.queries[4].sql)
-        .padding()
+    CollapsibleSQLView(sql: """
+    -- monthly churn by signup cohort
+    WITH cohorts AS (
+      SELECT id, date_trunc('month', created_at) AS cohort
+      FROM users
+      WHERE created_at >= now() - interval '90 days'
+    )
+    SELECT c.cohort, count(*) AS total
+    FROM cohorts c
+    GROUP BY c.cohort
+    ORDER BY c.cohort DESC;
+    """)
+    .padding()
 }

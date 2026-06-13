@@ -21,7 +21,7 @@ struct SQLEditor: View {
 }
 
 #Preview {
-    @Previewable @State var sql = MockData.queries[0].sql
+    @Previewable @State var sql = "SELECT count(*) AS signups\nFROM users\nWHERE created_at >= current_date;"
     SQLEditor(text: $sql)
         .padding()
 }

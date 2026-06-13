@@ -13,38 +13,15 @@ struct DatabasesView: View {
 
     var body: some View {
         NavigationStack {
-            List {
-                Section {
-                    ForEach(store.servers) { server in
-                        Button {
-                            onEdit(server)
-                        } label: {
-                            HStack(spacing: 12) {
-                                Image(systemName: "cylinder.split.1x2")
-                                    .foregroundStyle(server.color.color)
-                                VStack(alignment: .leading, spacing: 2) {
-                                    Text(server.name)
-                                        .foregroundStyle(.primary)
-                                    Text("\(server.engine) · \(server.host)")
-                                        .font(.system(.caption, design: .monospaced))
-                                        .foregroundStyle(.secondary)
-                                }
-                                Spacer()
-                                Text(server.databases.count == 1
-                                     ? "1 database"
-                                     : "\(server.databases.count) databases")
-                                    .font(.subheadline)
-                                    .foregroundStyle(.secondary)
-                                Image(systemName: "chevron.right")
-                                    .font(.footnote.weight(.semibold))
-                                    .foregroundStyle(.tertiary)
-                            }
-                        }
-                    }
-                } header: {
-                    Text("Servers")
-                } footer: {
-                    Text("Credentials are stored in the iOS Keychain, never synced in plaintext.")
+            Group {
+                if store.servers.isEmpty {
+                    ContentUnavailableView(
+                        "No databases yet",
+                        systemImage: "cylinder.split.1x2",
+                        description: Text("Tap + to connect your first database server.")
+                    )
+                } else {
+                    serverList
                 }
             }
             .navigationTitle("Database")
@@ -53,6 +30,43 @@ struct DatabasesView: View {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button("Add database server", systemImage: "plus", action: onAdd)
                 }
+            }
+        }
+    }
+
+    private var serverList: some View {
+        List {
+            Section {
+                ForEach(store.servers) { server in
+                    Button {
+                        onEdit(server)
+                    } label: {
+                        HStack(spacing: 12) {
+                            Image(systemName: "cylinder.split.1x2")
+                                .foregroundStyle(server.color.color)
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(server.name)
+                                    .foregroundStyle(.primary)
+                                Text("\(server.engine) · \(server.host)")
+                                    .font(.system(.caption, design: .monospaced))
+                                    .foregroundStyle(.secondary)
+                            }
+                            Spacer()
+                            Text(server.databases.count == 1
+                                 ? "1 database"
+                                 : "\(server.databases.count) databases")
+                                .font(.subheadline)
+                                .foregroundStyle(.secondary)
+                            Image(systemName: "chevron.right")
+                                .font(.footnote.weight(.semibold))
+                                .foregroundStyle(.tertiary)
+                        }
+                    }
+                }
+            } header: {
+                Text("Servers")
+            } footer: {
+                Text("Credentials are stored in the iOS Keychain, never synced in plaintext.")
             }
         }
     }

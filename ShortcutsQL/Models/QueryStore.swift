@@ -1,15 +1,14 @@
 import Foundation
 import Observation
 
-/// In-memory store backing the UI. Mock data only — no persistence or
-/// real database connections yet.
+/// In-memory store backing the UI. Starts empty — persistence and real
+/// database connections are not wired up yet.
 @Observable
 final class QueryStore {
     private(set) var queries: [SavedQuery]
     private(set) var servers: [DatabaseServer]
 
-    init(queries: [SavedQuery] = MockData.queries,
-         servers: [DatabaseServer] = MockData.servers) {
+    init(queries: [SavedQuery] = [], servers: [DatabaseServer] = []) {
         self.queries = queries
         self.servers = servers
     }
