@@ -241,7 +241,7 @@ struct AddDatabaseView: View {
             Button {
                 runTest()
             } label: {
-                Label(test == .running ? "Testing…" : "Test Connection",
+                Label(test == .running ? "Testing…" : "Test",
                       systemImage: "arrow.clockwise")
                     .frame(maxWidth: .infinity)
             }
