@@ -1,8 +1,11 @@
 import SwiftUI
-import Runestone
+@preconcurrency import Runestone
 import TreeSitterSQLRunestone
 
-/// Shared Runestone configuration for the SQL surfaces.
+/// Shared Runestone configuration for the SQL surfaces. Main-actor isolated
+/// because `TextView`'s properties are; only called from the representables'
+/// main-actor `makeUIView`/`updateUIView`.
+@MainActor
 private func makeConfiguredTextView() -> TextView {
     let textView = TextView()
     textView.backgroundColor = .clear
@@ -45,7 +48,8 @@ struct SQLEditorView: UIViewRepresentable {
         Coordinator(text: $text)
     }
 
-    final class Coordinator: NSObject, TextViewDelegate {
+    @MainActor
+    final class Coordinator: NSObject, @preconcurrency TextViewDelegate {
         private let text: Binding<String>
 
         init(text: Binding<String>) {
