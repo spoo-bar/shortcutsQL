@@ -13,13 +13,22 @@ struct ResultTable: Equatable, Sendable {
     let rows: [[String]]
     let countLabel: String
 
-    /// A plain-text rendering for returning to the Shortcuts pipeline: a bare
-    /// value for a single cell, otherwise a tab-separated table with a header.
-    var plainText: String {
-        if columns.count == 1 && rows.count == 1 { return rows[0][0] }
-        var lines: [String] = []
-        if !columns.isEmpty { lines.append(columns.map(\.name).joined(separator: "\t")) }
-        lines.append(contentsOf: rows.map { $0.joined(separator: "\t") })
-        return lines.joined(separator: "\n")
+    /// A JSON array of row objects (each keyed by column name) for returning
+    /// to the Shortcuts pipeline. Values are strings; a SQL NULL is the string
+    /// "NULL". Returns "[]" if serialization fails.
+    var json: String {
+        let objects: [[String: String]] = rows.map { row in
+            var object: [String: String] = [:]
+            for (index, column) in columns.enumerated() where index < row.count {
+                object[column.name] = row[index]
+            }
+            return object
+        }
+        guard let data = try? JSONSerialization.data(
+                withJSONObject: objects, options: [.prettyPrinted, .sortedKeys]),
+              let string = String(data: data, encoding: .utf8) else {
+            return "[]"
+        }
+        return string
     }
 }

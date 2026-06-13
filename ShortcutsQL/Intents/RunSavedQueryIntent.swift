@@ -6,7 +6,7 @@ import Foundation
 struct RunSavedQueryIntent: AppIntent {
     static let title: LocalizedStringResource = "Run Saved Query"
     static let description = IntentDescription(
-        "Runs one of your saved SQL queries against its database and returns the result."
+        "Runs one of your saved SQL queries against its database and returns the rows as JSON."
     )
 
     @Parameter(title: "Query")
@@ -38,6 +38,6 @@ struct RunSavedQueryIntent: AppIntent {
             rowCount: result.table.rows.count
         )
 
-        return .result(value: result.table.plainText)
+        return .result(value: result.table.json)
     }
 }
