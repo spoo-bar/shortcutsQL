@@ -33,6 +33,51 @@ enum PostgresConnectionService {
         }.value
     }
 
+    /// Runs `sql` against the server/database in `parameters` and returns the
+    /// rows as a `ResultTable`. Throws a `ConnectionError` with a readable
+    /// message on failure.
+    static func runQuery(_ sql: String, _ parameters: ConnectionParameters) async throws -> ResultTable {
+        try await Task.detached(priority: .userInitiated) {
+            do {
+                let connection = try openConnection(parameters)
+                defer { connection.close() }
+                let statement = try connection.prepareStatement(text: sql)
+                defer { statement.close() }
+                let cursor = try statement.execute(retrieveColumnMetadata: true)
+                defer { cursor.close() }
+
+                var rows: [[String]] = []
+                for result in cursor {
+                    let row = try result.get()
+                    rows.append(row.columns.map { $0.rawValue ?? "NULL" })
+                }
+
+                let names = cursor.columns?.map(\.name)
+                    ?? (0..<(rows.first?.count ?? 0)).map { "column\($0 + 1)" }
+                let columns = names.enumerated().map { index, name in
+                    ResultColumn(name: name, isNumeric: isNumericColumn(rows, index))
+                }
+                let countLabel = rows.count == 1 ? "1 row" : "\(rows.count) rows"
+                return ResultTable(columns: columns, rows: rows, countLabel: countLabel)
+            } catch {
+                throw ConnectionError(message: readableMessage(for: error))
+            }
+        }.value
+    }
+
+    /// A column is treated as numeric (for right-alignment) when every
+    /// non-NULL cell parses as a number.
+    private static func isNumericColumn(_ rows: [[String]], _ index: Int) -> Bool {
+        var sawValue = false
+        for row in rows where index < row.count {
+            let cell = row[index]
+            if cell == "NULL" { continue }
+            sawValue = true
+            if Double(cell) == nil { return false }
+        }
+        return sawValue
+    }
+
     /// Opens a connection. PostgresClientKit needs the credential to match the
     /// method the server requests, so try SCRAM-SHA-256 (the modern default)
     /// and only switch methods when the server *explicitly* asks for another

@@ -36,6 +36,13 @@ struct DatabaseServer: Identifiable, Hashable, Codable {
     var ssl: Bool
     var color: ServerColor
     var databases: [ServerDatabase]
+
+    /// The host and port parsed from the stored "host:port" value (port
+    /// defaults to 5432 when absent or unparseable).
+    var endpoint: (host: String, port: Int) {
+        guard let separator = host.lastIndex(of: ":") else { return (host, 5432) }
+        return (String(host[..<separator]), Int(host[host.index(after: separator)...]) ?? 5432)
+    }
 }
 
 /// A stored SQL query (a "shortcut").

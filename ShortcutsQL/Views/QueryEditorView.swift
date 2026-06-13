@@ -23,7 +23,7 @@ struct QueryEditorView: View {
         case invalid(String)
         case running
         case failed(String)
-        case tested
+        case success(ResultTable)
     }
 
     private enum PickerKind: String, Identifiable {
@@ -176,15 +176,34 @@ struct QueryEditorView: View {
     @ViewBuilder
     private var resultSection: some View {
         switch phase {
-        case .tested:
+        case .success(let table) where table.rows.isEmpty:
             Section {
-                Text("SQL is valid. Results will appear here once database execution is wired up.")
+                Text("Query ran successfully. No rows returned.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .frame(maxWidth: .infinity, alignment: .leading)
             } header: {
-                ResultSectionHeader(badgeText: "VALIDATED", badgeTone: .success,
-                                    meta: "not yet executed")
+                ResultSectionHeader(badgeText: "OK", badgeTone: .success, meta: "0 rows")
+            }
+        case .success(let table) where table.columns.count == 1 && table.rows.count == 1:
+            Section {
+                ScalarResultView(value: table.rows[0][0], unit: table.columns[0].name)
+            } header: {
+                ResultSectionHeader(badgeText: "OK", badgeTone: .success, meta: table.countLabel)
+            }
+        case .success(let table):
+            Section {
+                ResultTableView(table: table)
+                    .listRowInsets(EdgeInsets())
+            } header: {
+                ResultSectionHeader(badgeText: "OK", badgeTone: .success,
+                                    meta: "\(table.countLabel) · \(table.columns.count) cols")
+            } footer: {
+                if table.columns.count >= 8 {
+                    Text("Swipe the table sideways to see all \(table.columns.count) columns.")
+                        .frame(maxWidth: .infinity)
+                        .multilineTextAlignment(.center)
+                }
             }
         case .invalid(let message):
             Section {
@@ -198,7 +217,7 @@ struct QueryEditorView: View {
                 ErrorMessageView(message: message)
             } header: {
                 ResultSectionHeader(badgeText: "QUERY FAILED", badgeTone: .danger,
-                                    meta: "after 5,000 ms")
+                                    meta: "not completed")
             }
         case .idle, .running:
             EmptyView()
@@ -240,23 +259,54 @@ struct QueryEditorView: View {
             phase = .invalid(error)
             return
         }
-        // No database connection yet — this only validates the SQL. Execution
-        // (and the .running / .failed states) will be wired up with the real
-        // database integration.
-        phase = .tested
+        guard let server else {
+            phase = .failed("Select a server to run against.")
+            return
+        }
+        guard let credentials = store.credentials(for: server.id) else {
+            phase = .failed("No saved credentials for \u{201C}\(server.name)\u{201D}. Re-save it in the Database tab.")
+            return
+        }
+        let endpoint = server.endpoint
+        let parameters = ConnectionParameters(
+            host: endpoint.host,
+            port: endpoint.port,
+            database: database.isEmpty ? "postgres" : database,
+            user: credentials.user,
+            password: credentials.password,
+            ssl: server.ssl
+        )
+        let sqlText = sql
+        phase = .running
+        Task {
+            do {
+                let table = try await PostgresConnectionService.runQuery(sqlText, parameters)
+                guard phase == .running else { return }
+                phase = .success(table)
+            } catch {
+                guard phase == .running else { return }
+                phase = .failed(error.localizedDescription)
+            }
+        }
     }
 
     private func save() {
         let trimmedName = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        var lastRun = "—"
+        var rowsLabel = "—"
+        if case .success(let table) = phase {
+            lastRun = "just now"
+            rowsLabel = table.countLabel
+        }
         store.save(SavedQuery(
             id: query?.id ?? "q\(Int(Date().timeIntervalSince1970 * 1000))",
             name: trimmedName,
             serverName: server?.name ?? "",
             database: database,
             sql: sql.trimmingCharacters(in: .whitespacesAndNewlines),
-            lastRun: "—",
+            lastRun: lastRun,
             duration: "—",
-            rowsLabel: "—"
+            rowsLabel: rowsLabel
         ))
         dismiss()
         notify("Query \u{201C}\(trimmedName)\u{201D} \(isEditing ? "updated" : "saved").")
