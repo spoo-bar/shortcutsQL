@@ -78,6 +78,23 @@ final class QueryStore {
         servers.first { $0.name == name }
     }
 
+    /// Builds connection parameters for a saved query from its server and the
+    /// Keychain credentials, or nil if either is missing. Used by both the
+    /// editor and the Shortcuts intent.
+    func connectionParameters(for query: SavedQuery) -> ConnectionParameters? {
+        guard let server = servers.first(where: { $0.name == query.serverName }),
+              let credentials = credentials(for: server.id) else { return nil }
+        let endpoint = server.endpoint
+        return ConnectionParameters(
+            host: endpoint.host,
+            port: endpoint.port,
+            database: query.database.isEmpty ? "postgres" : query.database,
+            user: credentials.user,
+            password: credentials.password,
+            ssl: server.ssl
+        )
+    }
+
     // MARK: Persistence
 
     private func persistServers() {
