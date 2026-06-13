@@ -9,7 +9,18 @@
 /* Begin PBXBuildFile section */
 		AABB00000000000000000070 /* Runestone in Frameworks */ = {isa = PBXBuildFile; productRef = AABB00000000000000000080 /* Runestone */; };
 		AABB00000000000000000071 /* TreeSitterSQLRunestone in Frameworks */ = {isa = PBXBuildFile; productRef = AABB00000000000000000081 /* TreeSitterSQLRunestone */; };
+		AABB00000000000000000072 /* PostgresClientKit in Frameworks */ = {isa = PBXBuildFile; productRef = AABB00000000000000000082 /* PostgresClientKit */; };
 /* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		AABB00000000000000000061 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = AABB00000000000000000001 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = AABB00000000000000000010;
+			remoteInfo = ShortcutsQL;
+		};
+/* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
 		AABB00000000000000000020 /* ShortcutsQL.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = ShortcutsQL.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -36,6 +47,7 @@
 			files = (
 				AABB00000000000000000070 /* Runestone in Frameworks */,
 				AABB00000000000000000071 /* TreeSitterSQLRunestone in Frameworks */,
+				AABB00000000000000000072 /* PostgresClientKit in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -89,6 +101,7 @@
 			packageProductDependencies = (
 				AABB00000000000000000080 /* Runestone */,
 				AABB00000000000000000081 /* TreeSitterSQLRunestone */,
+				AABB00000000000000000082 /* PostgresClientKit */,
 			);
 			productName = ShortcutsQL;
 			productReference = AABB00000000000000000020 /* ShortcutsQL.app */;
@@ -148,6 +161,7 @@
 			packageReferences = (
 				AABB00000000000000000090 /* XCRemoteSwiftPackageReference "Runestone" */,
 				AABB00000000000000000091 /* XCRemoteSwiftPackageReference "TreeSitterLanguages" */,
+				AABB00000000000000000092 /* XCRemoteSwiftPackageReference "PostgresClientKit" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = AABB00000000000000000003 /* Products */;
@@ -201,16 +215,6 @@
 			targetProxy = AABB00000000000000000061 /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
-
-/* Begin PBXContainerItemProxy section */
-		AABB00000000000000000061 /* PBXContainerItemProxy */ = {
-			isa = PBXContainerItemProxy;
-			containerPortal = AABB00000000000000000001 /* Project object */;
-			proxyType = 1;
-			remoteGlobalIDString = AABB00000000000000000010;
-			remoteInfo = ShortcutsQL;
-		};
-/* End PBXContainerItemProxy section */
 
 /* Begin XCBuildConfiguration section */
 		AABB00000000000000000050 /* Debug */ = {
@@ -339,6 +343,7 @@
 				CURRENT_PROJECT_VERSION = 1;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_NSLocalNetworkUsageDescription = "ShortcutsQL connects to the database servers you configure.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -366,6 +371,7 @@
 				CURRENT_PROJECT_VERSION = 1;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_NSLocalNetworkUsageDescription = "ShortcutsQL connects to the database servers you configure.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -469,6 +475,14 @@
 				minimumVersion = 0.1.0;
 			};
 		};
+		AABB00000000000000000092 /* XCRemoteSwiftPackageReference "PostgresClientKit" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/codewinsdotcom/PostgresClientKit";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 1.5.0;
+			};
+		};
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
@@ -481,6 +495,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = AABB00000000000000000091 /* XCRemoteSwiftPackageReference "TreeSitterLanguages" */;
 			productName = TreeSitterSQLRunestone;
+		};
+		AABB00000000000000000082 /* PostgresClientKit */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = AABB00000000000000000092 /* XCRemoteSwiftPackageReference "PostgresClientKit" */;
+			productName = PostgresClientKit;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

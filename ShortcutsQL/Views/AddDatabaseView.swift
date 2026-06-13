@@ -20,6 +20,7 @@ struct AddDatabaseView: View {
     @State private var color = ServerColor.blue
     @State private var databases: [String] = []
     @State private var newDatabase = ""
+    @State private var ssl = true
     @State private var test = TestPhase.idle
     @State private var confirmDelete = false
 
@@ -29,15 +30,16 @@ struct AddDatabaseView: View {
         self.notify = notify
         guard let server else { return }
         let (host, port) = Self.splitHostPort(server.host)
+        let credentials = store.credentials(for: server.id)
         _name = State(initialValue: server.name)
         _engine = State(initialValue: server.engine)
         _host = State(initialValue: host)
         _port = State(initialValue: port)
-        _user = State(initialValue: server.user)
+        _user = State(initialValue: credentials?.user ?? "")
+        _password = State(initialValue: credentials?.password ?? "")
         _color = State(initialValue: server.color)
         _databases = State(initialValue: server.databases.map(\.name))
-        // Password isn't kept in the model (Keychain-backed), so it starts
-        // blank — re-enter it to pass Test connection before saving.
+        _ssl = State(initialValue: server.ssl)
     }
 
     private var isEditing: Bool { server != nil }
@@ -101,6 +103,7 @@ struct AddDatabaseView: View {
             .onChange(of: user) { test = .idle }
             .onChange(of: engine) { test = .idle }
             .onChange(of: databases) { test = .idle }
+            .onChange(of: ssl) { test = .idle }
             .sheet(isPresented: $showEnginePicker) {
                 PickerSheetView(
                     title: "Engine",
@@ -150,6 +153,7 @@ struct AddDatabaseView: View {
                 SecureField("Required", text: $password)
                     .multilineTextAlignment(.trailing)
             }
+            Toggle("Use SSL/TLS", isOn: $ssl)
         }
     }
 
@@ -228,18 +232,13 @@ struct AddDatabaseView: View {
             case .ok:
                 HStack(spacing: 10) {
                     StatusBadge(text: "CONNECTED", tone: .success)
-                    Text("\(engine) · 38 ms · \(databases.count) database\(databases.count == 1 ? "" : "s") reachable")
+                    Text("\(engine) · \(databases.first ?? "postgres") reachable")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
             case .failed(let message):
                 VStack(alignment: .leading, spacing: 8) {
-                    HStack(spacing: 10) {
-                        StatusBadge(text: "CONNECTION FAILED", tone: .danger)
-                        Text("after 5,000 ms")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    }
+                    StatusBadge(text: "CONNECTION FAILED", tone: .danger)
                     ErrorMessageView(message: message)
                 }
             case .idle, .running:
@@ -263,43 +262,41 @@ struct AddDatabaseView: View {
 
     private func runTest() {
         test = .running
-        // Prototype rule: an unreachable host (outside *.internal) or a blank
-        // password previews the failure state.
-        let trimmedHost = host.trimmingCharacters(in: .whitespaces)
-        let failure: String?
-        if password.trimmingCharacters(in: .whitespaces).isEmpty {
-            failure = "FATAL: password authentication failed for user \"\(user)\"\nHINT: check the password stored for \(trimmedHost.isEmpty ? "this server" : trimmedHost)."
-        } else if !trimmedHost.hasSuffix(".internal") {
-            failure = "could not translate host name \"\(trimmedHost)\" to address:\nName or service not known"
-        } else {
-            failure = nil
-        }
+        let parameters = ConnectionParameters(
+            host: host.trimmingCharacters(in: .whitespaces),
+            port: Int(port.trimmingCharacters(in: .whitespaces)) ?? 5432,
+            database: databases.first ?? "postgres",
+            user: user.trimmingCharacters(in: .whitespaces),
+            password: password,
+            ssl: ssl
+        )
         Task {
-            try? await Task.sleep(for: .milliseconds(900))
-            guard test == .running else { return }
-            if let failure {
-                test = .failed(failure)
-            } else {
+            do {
+                try await PostgresConnectionService.testConnection(parameters)
+                guard test == .running else { return }
                 test = .ok
+            } catch {
+                guard test == .running else { return }
+                test = .failed(error.localizedDescription)
             }
         }
     }
 
     private func save() {
-        // Preserve any per-database user when editing; the UI only edits names.
-        let merged = databases.map { name in
-            ServerDatabase(name: name, user: server?.databases.first { $0.name == name }?.user)
-        }
         let saved = DatabaseServer(
             id: server?.id ?? "s\(Int(Date().timeIntervalSince1970 * 1000))",
             name: name.trimmingCharacters(in: .whitespaces),
             engine: engine,
             host: "\(host.trimmingCharacters(in: .whitespaces)):\(port)",
-            user: user,
+            ssl: ssl,
             color: color,
-            databases: merged
+            databases: databases.map { ServerDatabase(name: $0) }
         )
-        store.saveServer(saved)
+        let credentials = ServerCredentials(
+            user: user.trimmingCharacters(in: .whitespaces),
+            password: password
+        )
+        store.saveServer(saved, credentials: credentials)
         dismiss()
         notify("Database server \u{201C}\(saved.name)\u{201D} saved.")
     }
