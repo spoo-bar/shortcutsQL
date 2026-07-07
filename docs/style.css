@@ -51,13 +51,18 @@ header.site {
   width: 46px;
   height: 46px;
   border-radius: 11px;
-  background: linear-gradient(135deg, var(--accent), #7aa0ff);
-  color: #fff;
-  display: grid;
-  place-items: center;
-  font-weight: 700;
-  font-size: 20px;
   flex: none;
+  object-fit: cover;
+  border: 1px solid var(--border);
+}
+
+.hero-icon {
+  width: 92px;
+  height: 92px;
+  border-radius: 21px;
+  border: 1px solid var(--border);
+  margin-bottom: 22px;
+  display: block;
 }
 
 header.site .name { font-weight: 650; font-size: 18px; }
