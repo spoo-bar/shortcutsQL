@@ -45,8 +45,19 @@ jobs:
       - name: Build & Test
         run: |
           set -o pipefail
+          # Ad-hoc sign ("Sign to Run Locally") for the simulator so the app's
+          # keychain-access-groups entitlement is actually applied. Fully
+          # disabling code signing strips entitlements, which makes SecItemAdd
+          # fail with errSecMissingEntitlement on newer iOS simulators and
+          # breaks the Keychain tests. Manual style + empty team avoids the
+          # automatic-signing profile lookup that has no credentials on CI.
           xcodebuild test \
             -project ShortcutsQL.xcodeproj \
             -scheme ShortcutsQL \
             -destination "platform=iOS Simulator,id=${{ steps.sim.outputs.udid }}" \
-            CODE_SIGNING_ALLOWED=NO
+            CODE_SIGN_IDENTITY="-" \
+            CODE_SIGN_STYLE=Manual \
+            CODE_SIGNING_ALLOWED=YES \
+            CODE_SIGNING_REQUIRED=NO \
+            DEVELOPMENT_TEAM="" \
+            PROVISIONING_PROFILE_SPECIFIER=""
