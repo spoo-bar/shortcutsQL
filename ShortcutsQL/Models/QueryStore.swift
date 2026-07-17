@@ -8,10 +8,17 @@ import Observation
 final class QueryStore {
     private(set) var queries: [SavedQuery]
     private(set) var servers: [DatabaseServer]
+    /// Retained query results keyed by query id, newest first. Only populated
+    /// when history is enabled (see `isHistoryEnabled`).
+    private(set) var histories: [String: [QueryHistoryEntry]]
 
     private let defaults: UserDefaults
     private static let serversKey = "servers"
     private static let queriesKey = "queries"
+    private static let historyKey = "history"
+    /// UserDefaults key mirroring the `@AppStorage("historyEnabled")` toggle so
+    /// the Shortcuts intents (which have no SwiftUI environment) can read it.
+    static let historyEnabledKey = "historyEnabled"
 
     /// Loads persisted metadata. Pass explicit arrays (e.g. in previews) to
     /// bypass persistence.
@@ -19,7 +26,11 @@ final class QueryStore {
         self.defaults = defaults
         self.queries = queries ?? Self.load([SavedQuery].self, key: Self.queriesKey, from: defaults) ?? []
         self.servers = servers ?? Self.load([DatabaseServer].self, key: Self.serversKey, from: defaults) ?? []
+        self.histories = Self.load([String: [QueryHistoryEntry]].self, key: Self.historyKey, from: defaults) ?? [:]
     }
+
+    /// Whether result history is turned on. Mirrors the Settings toggle.
+    var isHistoryEnabled: Bool { defaults.bool(forKey: Self.historyEnabledKey) }
 
     // MARK: Queries
 
@@ -35,6 +46,9 @@ final class QueryStore {
 
     func deleteQuery(id: String) {
         queries.removeAll { $0.id == id }
+        if histories.removeValue(forKey: id) != nil {
+            persistHistories()
+        }
         persistQueries()
     }
 
@@ -49,6 +63,9 @@ final class QueryStore {
         if let loaded = Self.load([DatabaseServer].self, key: Self.serversKey, from: defaults) {
             servers = loaded
         }
+        if let loaded = Self.load([String: [QueryHistoryEntry]].self, key: Self.historyKey, from: defaults) {
+            histories = loaded
+        }
     }
 
     /// Records the outcome of running a saved query so the Home screen can
@@ -60,6 +77,32 @@ final class QueryStore {
         queries[index].durationMilliseconds = durationMilliseconds
         queries[index].rowCount = rowCount
         persistQueries()
+    }
+
+    // MARK: History
+
+    /// The retained results for a query, newest first (empty if none).
+    func history(forQueryID id: String) -> [QueryHistoryEntry] {
+        histories[id] ?? []
+    }
+
+    /// Prepends a result to a query's history and trims it to the newest
+    /// `limit` entries, then persists. Used by the Shortcuts run intent when
+    /// history is enabled.
+    func recordHistory(queryID: String, entry: QueryHistoryEntry, limit: Int) {
+        var entries = histories[queryID] ?? []
+        entries.insert(entry, at: 0)
+        if entries.count > limit {
+            entries.removeLast(entries.count - limit)
+        }
+        histories[queryID] = entries
+        persistHistories()
+    }
+
+    /// Removes all retained results for a query.
+    func clearHistory(forQueryID id: String) {
+        guard histories.removeValue(forKey: id) != nil else { return }
+        persistHistories()
     }
 
     // MARK: Servers
@@ -115,6 +158,10 @@ final class QueryStore {
 
     private func persistQueries() {
         Self.save(queries, key: Self.queriesKey, to: defaults)
+    }
+
+    private func persistHistories() {
+        Self.save(histories, key: Self.historyKey, to: defaults)
     }
 
     private static func load<T: Decodable>(_ type: T.Type, key: String, from defaults: UserDefaults) -> T? {

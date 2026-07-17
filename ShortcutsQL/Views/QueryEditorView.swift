@@ -9,11 +9,13 @@ struct QueryEditorView: View {
     let notify: (String) -> Void
 
     @Environment(\.dismiss) private var dismiss
+    @AppStorage("historyEnabled") private var historyEnabled = false
 
     @State private var name: String
     @State private var serverID: String
     @State private var database: String
     @State private var sql: String
+    @State private var historyLimit: Int
     @State private var phase = RunPhase.idle
     @State private var activePicker: PickerKind?
     @State private var confirmDelete = false
@@ -42,6 +44,7 @@ struct QueryEditorView: View {
         _serverID = State(initialValue: server?.id ?? "")
         _database = State(initialValue: query?.database ?? server?.databases.first?.name ?? "")
         _sql = State(initialValue: query?.sql ?? "")
+        _historyLimit = State(initialValue: query?.historyLimit ?? SavedQuery.defaultHistoryLimit)
     }
 
     private var isEditing: Bool { query != nil }
@@ -96,6 +99,10 @@ struct QueryEditorView: View {
                     SQLEditor(text: $sql, invalid: isInvalid)
                         .listRowInsets(EdgeInsets())
                         .listRowBackground(Color.clear)
+                }
+
+                if historyEnabled {
+                    historySection
                 }
 
                 Section {
@@ -171,6 +178,41 @@ struct QueryEditorView: View {
             ) {
                 Button("Delete Query", role: .destructive, action: deleteQuery)
             }
+        }
+    }
+
+    @ViewBuilder
+    private var historySection: some View {
+        Section {
+            Stepper(value: $historyLimit, in: 1...50) {
+                HStack {
+                    Text("Keep last")
+                    Spacer()
+                    Text(historyLimit == 1 ? "1 result" : "\(historyLimit) results")
+                        .foregroundStyle(.secondary)
+                        .monospacedDigit()
+                }
+            }
+            if let id = query?.id {
+                let count = store.history(forQueryID: id).count
+                if count > 0 {
+                    Button(role: .destructive) {
+                        store.clearHistory(forQueryID: id)
+                        notify("History cleared.")
+                    } label: {
+                        HStack {
+                            Text("Clear History")
+                            Spacer()
+                            Text(count == 1 ? "1 stored" : "\(count) stored")
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                }
+            }
+        } header: {
+            Text("History")
+        } footer: {
+            Text("Each time this query runs from Shortcuts, its result is retained (up to the limit above) and returned by the \u{201C}Historical \(name.isEmpty ? "query" : name)\u{201D} action.")
         }
     }
 
@@ -320,7 +362,8 @@ struct QueryEditorView: View {
             sql: sql.trimmingCharacters(in: .whitespacesAndNewlines),
             lastRanAt: ranAt,
             durationMilliseconds: durationMilliseconds,
-            rowCount: rowCount
+            rowCount: rowCount,
+            historyLimit: historyLimit
         ))
         dismiss()
         notify("Query \u{201C}\(trimmedName)\u{201D} \(isEditing ? "updated" : "saved").")

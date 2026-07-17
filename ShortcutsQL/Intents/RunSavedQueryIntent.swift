@@ -36,12 +36,28 @@ struct RunSavedQueryIntent: AppIntent {
 
         // Persist the run so the Home screen reflects it (fresh store to avoid
         // sharing state across the awaited call).
-        QueryStore().recordRun(
+        let ranAt = Date()
+        let store2 = QueryStore()
+        store2.recordRun(
             queryID: saved.id,
-            at: Date(),
+            at: ranAt,
             durationMilliseconds: result.durationMilliseconds,
             rowCount: result.table.rows.count
         )
+
+        // When history is enabled, retain this result (trimmed to the query's
+        // per-query limit) so the "Historical <query>" Shortcut can return it.
+        if store2.isHistoryEnabled {
+            store2.recordHistory(
+                queryID: saved.id,
+                entry: QueryHistoryEntry(
+                    id: "h\(Int(ranAt.timeIntervalSince1970 * 1000))",
+                    ranAt: ranAt,
+                    resultJSON: result.table.json
+                ),
+                limit: saved.effectiveHistoryLimit
+            )
+        }
 
         return .result(value: result.table.json)
     }
