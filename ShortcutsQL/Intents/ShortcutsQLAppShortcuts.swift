@@ -12,5 +12,14 @@ struct ShortcutsQLAppShortcuts: AppShortcutsProvider {
             shortTitle: "Run Saved Query",
             systemImageName: "chevron.left.forwardslash.chevron.right"
         )
+        AppShortcut(
+            intent: HistoricalQueryIntent(),
+            phrases: [
+                "Get \(.applicationName) query history",
+                "Historical \(.applicationName) query",
+            ],
+            shortTitle: "Historical Query",
+            systemImageName: "clock.arrow.circlepath"
+        )
     }
 }

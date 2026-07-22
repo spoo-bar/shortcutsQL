@@ -84,6 +84,64 @@ struct QueryStoreTests {
         #expect(store.queries.isEmpty)
     }
 
+    // MARK: History
+
+    private func historyEntry(_ id: String, seconds: TimeInterval) -> QueryHistoryEntry {
+        QueryHistoryEntry(id: id, ranAt: Date(timeIntervalSince1970: seconds),
+                          resultJSON: "[{\"n\":\"\(id)\"}]")
+    }
+
+    @Test("isHistoryEnabled reflects the historyEnabled default")
+    func isHistoryEnabled() {
+        let (store, defaults) = makeStore()
+        #expect(store.isHistoryEnabled == false)
+        defaults.set(true, forKey: QueryStore.historyEnabledKey)
+        #expect(store.isHistoryEnabled == true)
+    }
+
+    @Test("Recording history prepends (newest first) and trims to the limit")
+    func recordHistoryTrims() {
+        let (store, _) = makeStore()
+        store.save(sampleQuery(id: "a"))
+        for i in 1...5 {
+            store.recordHistory(queryID: "a", entry: historyEntry("e\(i)", seconds: Double(i)), limit: 3)
+        }
+        let entries = store.history(forQueryID: "a")
+        #expect(entries.count == 3)
+        // Newest first, older ones dropped.
+        #expect(entries.map(\.id) == ["e5", "e4", "e3"])
+    }
+
+    @Test("History persists across store instances")
+    func historyPersists() {
+        let (store, defaults) = makeStore()
+        store.save(sampleQuery(id: "a"))
+        store.recordHistory(queryID: "a", entry: historyEntry("e1", seconds: 1), limit: 5)
+        let reloaded = QueryStore(defaults: defaults)
+        #expect(reloaded.history(forQueryID: "a").map(\.id) == ["e1"])
+    }
+
+    @Test("Deleting a query also clears its history")
+    func deleteQueryClearsHistory() {
+        let (store, defaults) = makeStore()
+        store.save(sampleQuery(id: "a"))
+        store.recordHistory(queryID: "a", entry: historyEntry("e1", seconds: 1), limit: 5)
+        store.deleteQuery(id: "a")
+        #expect(store.history(forQueryID: "a").isEmpty)
+        // And the removal is persisted.
+        #expect(QueryStore(defaults: defaults).history(forQueryID: "a").isEmpty)
+    }
+
+    @Test("Clearing history removes only the target query's entries")
+    func clearHistory() {
+        let (store, _) = makeStore()
+        store.recordHistory(queryID: "a", entry: historyEntry("a1", seconds: 1), limit: 5)
+        store.recordHistory(queryID: "b", entry: historyEntry("b1", seconds: 1), limit: 5)
+        store.clearHistory(forQueryID: "a")
+        #expect(store.history(forQueryID: "a").isEmpty)
+        #expect(store.history(forQueryID: "b").map(\.id) == ["b1"])
+    }
+
     // MARK: Servers & credentials
 
     @Test("Servers persist across store instances")

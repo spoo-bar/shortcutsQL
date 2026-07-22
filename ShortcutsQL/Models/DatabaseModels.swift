@@ -47,6 +47,9 @@ struct DatabaseServer: Identifiable, Hashable, Codable {
 /// A stored SQL query (a "shortcut"). The run metadata is recorded each time
 /// the query is executed and is nil until it has run at least once.
 struct SavedQuery: Identifiable, Hashable, Codable {
+    /// The per-query history cap used when none is set.
+    static let defaultHistoryLimit = 5
+
     let id: String
     var name: String
     var serverName: String
@@ -55,6 +58,15 @@ struct SavedQuery: Identifiable, Hashable, Codable {
     var lastRanAt: Date? = nil
     var durationMilliseconds: Int? = nil
     var rowCount: Int? = nil
+    /// How many past results to retain for this query when history is enabled.
+    /// Optional so queries persisted before this feature still decode (a
+    /// missing key must not fail the whole decode and drop every saved query).
+    var historyLimit: Int? = nil
+
+    /// The effective number of results to keep, clamped to a sane range.
+    var effectiveHistoryLimit: Int {
+        max(1, min(historyLimit ?? Self.defaultHistoryLimit, 50))
+    }
 
     /// e.g. "1 row" / "25 rows", or nil if the query hasn't run.
     var rowsLabel: String? {
@@ -66,5 +78,35 @@ struct SavedQuery: Identifiable, Hashable, Codable {
         durationMilliseconds.map { ms in
             ms < 1000 ? "\(ms) ms" : String(format: "%.1f s", Double(ms) / 1000)
         }
+    }
+}
+
+/// A single retained result from running a saved query. Captured only when
+/// history is enabled and only for Shortcuts runs. Stores the full result
+/// snapshot (as `ResultTable.json`) plus when it ran.
+struct QueryHistoryEntry: Identifiable, Hashable, Codable {
+    let id: String
+    let ranAt: Date
+    /// A snapshot of `ResultTable.json` — a JSON array of row objects.
+    let resultJSON: String
+
+    /// Serializes history entries (newest first) into the JSON array returned
+    /// by the "Historical <query>" Shortcut. Each element is
+    /// `{ "ranAt": <ISO8601>, "result": [ {column: value}, ... ] }`. The stored
+    /// `resultJSON` is parsed back into real JSON so it nests rather than being
+    /// an escaped string. Returns "[]" if serialization fails.
+    static func jsonArray(_ entries: [QueryHistoryEntry]) -> String {
+        let formatter = ISO8601DateFormatter()
+        let objects: [[String: Any]] = entries.map { entry in
+            let result = (entry.resultJSON.data(using: .utf8))
+                .flatMap { try? JSONSerialization.jsonObject(with: $0) } ?? []
+            return ["ranAt": formatter.string(from: entry.ranAt), "result": result]
+        }
+        guard let data = try? JSONSerialization.data(
+                withJSONObject: objects, options: [.prettyPrinted]),
+              let string = String(data: data, encoding: .utf8) else {
+            return "[]"
+        }
+        return string
     }
 }

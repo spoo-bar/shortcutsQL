@@ -3,6 +3,7 @@ import SwiftUI
 /// Settings: appearance only — intentionally sparse for now.
 struct SettingsView: View {
     @AppStorage("appearance") private var appearanceRaw = AppearanceMode.auto.rawValue
+    @AppStorage("historyEnabled") private var historyEnabled = false
 
     private var version: String {
         let info = Bundle.main.infoDictionary
@@ -21,6 +22,14 @@ struct SettingsView: View {
                         }
                     }
                     .pickerStyle(.segmented)
+                }
+
+                Section {
+                    Toggle("Enable History", isOn: $historyEnabled)
+                } header: {
+                    Text("History")
+                } footer: {
+                    Text("Retain the last few results of each query as it runs from Shortcuts, and add a \u{201C}Historical <query>\u{201D} action that returns them as JSON. Set how many results to keep per query when editing it.")
                 }
 
                 Section {
