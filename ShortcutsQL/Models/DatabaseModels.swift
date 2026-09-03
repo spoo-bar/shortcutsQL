@@ -31,16 +31,19 @@ struct ServerDatabase: Hashable, Identifiable, Codable {
 struct DatabaseServer: Identifiable, Hashable, Codable {
     let id: String
     var name: String
-    var engine: String
+    var engine: DatabaseEngine
     var host: String
     var color: ServerColor
     var databases: [ServerDatabase]
 
     /// The host and port parsed from the stored "host:port" value (port
-    /// defaults to 5432 when absent or unparseable).
+    /// defaults to the engine's standard port when absent or unparseable).
     var endpoint: (host: String, port: Int) {
-        guard let separator = host.lastIndex(of: ":") else { return (host, 5432) }
-        return (String(host[..<separator]), Int(host[host.index(after: separator)...]) ?? 5432)
+        guard let separator = host.lastIndex(of: ":") else { return (host, engine.defaultPort) }
+        return (
+            String(host[..<separator]),
+            Int(host[host.index(after: separator)...]) ?? engine.defaultPort
+        )
     }
 }
 

@@ -142,9 +142,10 @@ final class QueryStore {
               let credentials = credentials(for: server.id) else { return nil }
         let endpoint = server.endpoint
         return ConnectionParameters(
+            engine: server.engine,
             host: endpoint.host,
             port: endpoint.port,
-            database: query.database.isEmpty ? "postgres" : query.database,
+            database: query.database.isEmpty ? server.engine.defaultDatabase : query.database,
             user: credentials.user,
             password: credentials.password
         )

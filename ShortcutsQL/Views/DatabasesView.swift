@@ -47,7 +47,7 @@ struct DatabasesView: View {
                             VStack(alignment: .leading, spacing: 2) {
                                 Text(server.name)
                                     .foregroundStyle(.primary)
-                                Text("\(server.engine) · \(server.host)")
+                                Text("\(server.engine.rawValue) · \(server.host)")
                                     .font(.system(.caption, design: .monospaced))
                                     .foregroundStyle(.secondary)
                             }

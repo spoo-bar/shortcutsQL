@@ -2,6 +2,21 @@
 
 A SwiftUI iOS app.
 
+## Supported databases
+
+| Engine | Default port | Driver |
+| --- | --- | --- |
+| PostgreSQL | 5432 | [PostgresClientKit](https://github.com/codewinsdotcom/PostgresClientKit) |
+| MySQL | 3306 | [MySQLNIO](https://github.com/vapor/mysql-nio) |
+
+Pick the engine when adding a server; the port, the database connected to when a
+query doesn't name one, and the wording of validation errors all follow from it.
+The PostgreSQL path requires SSL; the MySQL path negotiates TLS when the server
+advertises it and connects in plaintext when it doesn't. Neither validates the
+server certificate — MySQL and PostgreSQL servers overwhelmingly present the
+self-signed certificate generated on first start — so traffic is encrypted but
+not protected against an active man-in-the-middle.
+
 ## Requirements
 
 - **Xcode 26** or later
@@ -24,7 +39,7 @@ ShortcutsQL/                 # App sources (file-system synchronized group)
   ShortcutsQLApp.swift       # @main entry point
   ContentView.swift          # App shell: tabs, sheets, toasts
   BrandColors.swift          # SQL syntax highlighting palette
-  Models/                    # Mock data, query store, SQL validation/highlighting
+  Models/                    # Engines, connection services, query store, SQL validation
   Views/                     # Home, query editor, databases, settings
   Assets.xcassets/           # App icon & accent color
 ShortcutsQLTests/            # Unit tests (Swift Testing)

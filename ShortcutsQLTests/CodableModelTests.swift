@@ -7,12 +7,38 @@ struct CodableModelTests {
     @Test("DatabaseServer round-trips through JSON")
     func databaseServerRoundTrip() throws {
         let server = DatabaseServer(
-            id: "s1", name: "prod", engine: "PostgreSQL", host: "db.internal:5432",
+            id: "s1", name: "prod", engine: .postgreSQL, host: "db.internal:5432",
             color: .blue, databases: [ServerDatabase(name: "app_production")]
         )
         let data = try JSONEncoder().encode(server)
         let decoded = try JSONDecoder().decode(DatabaseServer.self, from: data)
         #expect(decoded == server)
+    }
+
+    @Test("DatabaseServer encodes its engine as the display name")
+    func databaseServerEncodesEngineName() throws {
+        let server = DatabaseServer(
+            id: "s1", name: "prod", engine: .mySQL, host: "mysql.internal:3306",
+            color: .blue, databases: []
+        )
+        let json = String(decoding: try JSONEncoder().encode(server), as: UTF8.self)
+        #expect(json.contains("\"engine\":\"MySQL\""))
+        let decoded = try JSONDecoder().decode(DatabaseServer.self, from: Data(json.utf8))
+        #expect(decoded.engine == .mySQL)
+    }
+
+    @Test("An unknown engine name decodes as the fallback engine")
+    func databaseServerDecodesUnknownEngine() throws {
+        // A server saved with an engine this build can no longer connect to
+        // must still decode: throwing here would fail the whole array decode
+        // and silently drop every saved server.
+        let legacy = """
+        {"id":"s9","name":"legacy","engine":"CockroachDB","host":"db.internal:5432",
+         "color":"blue","databases":[]}
+        """
+        let decoded = try JSONDecoder().decode(DatabaseServer.self, from: Data(legacy.utf8))
+        #expect(decoded.engine == DatabaseEngine.fallback)
+        #expect(decoded.endpoint.port == 5432)
     }
 
     @Test("SavedQuery round-trips through JSON")

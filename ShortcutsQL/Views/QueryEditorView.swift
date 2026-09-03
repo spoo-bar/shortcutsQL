@@ -154,7 +154,7 @@ struct QueryEditorView: View {
                         title: "Server",
                         options: store.servers.map {
                             PickerOption(id: $0.id, label: $0.name,
-                                         subtitle: "\($0.engine) · \($0.host)", color: $0.color.color)
+                                         subtitle: "\($0.engine.rawValue) · \($0.host)", color: $0.color.color)
                         },
                         selection: serverID,
                         onSelect: selectServer
@@ -299,7 +299,7 @@ struct QueryEditorView: View {
     }
 
     private func run() {
-        if let error = SQLValidator.validate(sql) {
+        if let error = SQLValidator.validate(sql, engine: server?.engine ?? .fallback) {
             phase = .invalid(error)
             return
         }
@@ -313,9 +313,10 @@ struct QueryEditorView: View {
         }
         let endpoint = server.endpoint
         let parameters = ConnectionParameters(
+            engine: server.engine,
             host: endpoint.host,
             port: endpoint.port,
-            database: database.isEmpty ? "postgres" : database,
+            database: database.isEmpty ? server.engine.defaultDatabase : database,
             user: credentials.user,
             password: credentials.password
         )
@@ -323,7 +324,7 @@ struct QueryEditorView: View {
         phase = .running
         Task {
             do {
-                let result = try await PostgresConnectionService.runQuery(sqlText, parameters)
+                let result = try await DatabaseConnectionService.runQuery(sqlText, parameters)
                 guard phase == .running else { return }
                 let ranAt = Date()
                 lastRanAt = ranAt

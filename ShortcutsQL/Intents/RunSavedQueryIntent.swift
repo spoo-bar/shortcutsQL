@@ -32,7 +32,7 @@ struct RunSavedQueryIntent: AppIntent {
             )
         }
 
-        let result = try await PostgresConnectionService.runQuery(saved.sql, parameters)
+        let result = try await DatabaseConnectionService.runQuery(saved.sql, parameters)
 
         // Persist the run so the Home screen reflects it (fresh store to avoid
         // sharing state across the awaited call).

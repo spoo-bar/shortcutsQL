@@ -16,8 +16,11 @@ struct QueryStoreTests {
                    sql: "SELECT count(*) FROM trials;")
     }
 
-    private func sampleServer(id: String, name: String = "prod") -> DatabaseServer {
-        DatabaseServer(id: id, name: name, engine: "PostgreSQL", host: "db.internal:5432",
+    private func sampleServer(
+        id: String, name: String = "prod",
+        engine: DatabaseEngine = .postgreSQL, host: String = "db.internal:5432"
+    ) -> DatabaseServer {
+        DatabaseServer(id: id, name: name, engine: engine, host: host,
                        color: .blue, databases: [ServerDatabase(name: "app_production")])
     }
 
@@ -184,5 +187,67 @@ struct QueryStoreTests {
         let persisted = defaults.data(forKey: "servers").flatMap { String(data: $0, encoding: .utf8) } ?? ""
         #expect(!persisted.contains(password))
         #expect(!persisted.contains("specialuser"))
+    }
+
+    // MARK: Connection parameters
+
+    @Test("Connection parameters carry the server's engine, endpoint, and credentials")
+    func connectionParametersFromServer() {
+        let (store, _) = makeStore()
+        let id = "srv-\(UUID().uuidString)"
+        defer { store.deleteServer(id: id) }
+        store.saveServer(sampleServer(id: id, name: "prod"),
+                         credentials: ServerCredentials(user: "readonly", password: "pw"))
+        let parameters = store.connectionParameters(for: sampleQuery(id: "q"))
+        #expect(parameters?.engine == .postgreSQL)
+        #expect(parameters?.host == "db.internal")
+        #expect(parameters?.port == 5432)
+        #expect(parameters?.database == "app_production")
+        #expect(parameters?.user == "readonly")
+        #expect(parameters?.password == "pw")
+    }
+
+    @Test("A MySQL server's parameters use its engine and port")
+    func connectionParametersForMySQL() {
+        let (store, _) = makeStore()
+        let id = "srv-\(UUID().uuidString)"
+        defer { store.deleteServer(id: id) }
+        store.saveServer(
+            sampleServer(id: id, name: "prod", engine: .mySQL, host: "mysql.internal:3306"),
+            credentials: ServerCredentials(user: "app", password: "pw")
+        )
+        let parameters = store.connectionParameters(for: sampleQuery(id: "q"))
+        #expect(parameters?.engine == .mySQL)
+        #expect(parameters?.host == "mysql.internal")
+        #expect(parameters?.port == 3306)
+    }
+
+    @Test("A query with no database falls back to the engine's default")
+    func connectionParametersDefaultDatabase() {
+        let (store, _) = makeStore()
+        let postgresID = "srv-\(UUID().uuidString)"
+        let mysqlID = "srv-\(UUID().uuidString)"
+        defer {
+            store.deleteServer(id: postgresID)
+            store.deleteServer(id: mysqlID)
+        }
+        store.saveServer(sampleServer(id: postgresID, name: "pg"),
+                         credentials: ServerCredentials(user: "u", password: "p"))
+        store.saveServer(sampleServer(id: mysqlID, name: "my", engine: .mySQL,
+                                      host: "mysql.internal:3306"),
+                         credentials: ServerCredentials(user: "u", password: "p"))
+
+        func query(server: String) -> SavedQuery {
+            SavedQuery(id: "q", name: "Q", serverName: server, database: "", sql: "SELECT 1;")
+        }
+        #expect(store.connectionParameters(for: query(server: "pg"))?.database == "postgres")
+        // MySQL connects with no database selected rather than a named one.
+        #expect(store.connectionParameters(for: query(server: "my"))?.database == "")
+    }
+
+    @Test("Connection parameters are nil without a matching server")
+    func connectionParametersWithoutServer() {
+        let (store, _) = makeStore()
+        #expect(store.connectionParameters(for: sampleQuery(id: "q")) == nil)
     }
 }
