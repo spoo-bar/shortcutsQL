@@ -11,7 +11,7 @@ struct AddDatabaseView: View {
     @Environment(\.dismiss) private var dismiss
 
     @State private var name = ""
-    @State private var engine = "PostgreSQL"
+    @State private var engine = DatabaseEngine.postgreSQL
     @State private var showEnginePicker = false
     @State private var host = ""
     @State private var port = ""
@@ -50,14 +50,22 @@ struct AddDatabaseView: View {
         case failed(String)
     }
 
-    // SQLite is test-only and ClickHouse is unsupported, so neither appears here.
-    // MySQL, MariaDB, and SQL Server stay visible but aren't selectable yet.
-    private static let engines: [PickerOption] = [
-        PickerOption(id: "PostgreSQL", label: "PostgreSQL", subtitle: "default port 5432", systemImage: "server.rack"),
-        PickerOption(id: "MySQL", label: "MySQL", subtitle: "default port 3306", systemImage: "server.rack", disabled: true),
+    // Every connectable engine, then the ones the picker still shows but
+    // can't select. SQLite is test-only and ClickHouse is unsupported, so
+    // neither appears here.
+    private static let engines: [PickerOption] = DatabaseEngine.allCases.map {
+        PickerOption(id: $0.rawValue, label: $0.rawValue, subtitle: $0.pickerSubtitle,
+                     systemImage: "server.rack")
+    } + [
         PickerOption(id: "MariaDB", label: "MariaDB", subtitle: "default port 3306", systemImage: "server.rack", disabled: true),
         PickerOption(id: "SQL Server", label: "SQL Server", subtitle: "default port 1433", systemImage: "server.rack", disabled: true),
     ]
+
+    /// The database "Test" connects to: the first one listed, or the engine's
+    /// default when the server has none yet.
+    private var testDatabase: String {
+        databases.first ?? engine.defaultDatabase
+    }
 
     var body: some View {
         NavigationStack {
@@ -100,14 +108,23 @@ struct AddDatabaseView: View {
             .onChange(of: password) { test = .idle }
             .onChange(of: port) { test = .idle }
             .onChange(of: user) { test = .idle }
-            .onChange(of: engine) { test = .idle }
+            .onChange(of: engine) { previous, current in
+                test = .idle
+                // Carry the port over to the new engine's default when it was
+                // left at the old one's (or never filled in).
+                if port.isEmpty || port == String(previous.defaultPort) {
+                    port = String(current.defaultPort)
+                }
+            }
             .onChange(of: databases) { test = .idle }
             .sheet(isPresented: $showEnginePicker) {
                 PickerSheetView(
                     title: "Engine",
                     options: Self.engines,
-                    selection: engine,
-                    onSelect: { engine = $0 }
+                    selection: engine.rawValue,
+                    onSelect: { selected in
+                        if let selected = DatabaseEngine.named(selected) { engine = selected }
+                    }
                 )
             }
         }
@@ -127,7 +144,7 @@ struct AddDatabaseView: View {
                     Text("Engine")
                         .foregroundStyle(.primary)
                     Spacer()
-                    Text(engine)
+                    Text(engine.rawValue)
                         .foregroundStyle(.secondary)
                     Image(systemName: "chevron.right")
                         .font(.footnote.weight(.semibold))
@@ -139,7 +156,7 @@ struct AddDatabaseView: View {
                     .monospacedField()
             }
             LabeledContent("Port") {
-                TextField("5432", text: $port)
+                TextField(String(engine.defaultPort), text: $port)
                     .monospacedField()
                     .keyboardType(.numberPad)
             }
@@ -247,7 +264,7 @@ struct AddDatabaseView: View {
             case .ok:
                 HStack(spacing: 10) {
                     StatusBadge(text: "CONNECTED", tone: .success)
-                    Text("\(engine) · \(databases.first ?? "postgres") reachable")
+                    Text("\(engine.rawValue) · \(testDatabase.isEmpty ? "server" : testDatabase) reachable")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
@@ -278,15 +295,16 @@ struct AddDatabaseView: View {
     private func runTest() {
         test = .running
         let parameters = ConnectionParameters(
+            engine: engine,
             host: host.trimmingCharacters(in: .whitespaces),
-            port: Int(port.trimmingCharacters(in: .whitespaces)) ?? 5432,
-            database: databases.first ?? "postgres",
+            port: Int(port.trimmingCharacters(in: .whitespaces)) ?? engine.defaultPort,
+            database: testDatabase,
             user: user.trimmingCharacters(in: .whitespaces),
             password: password
         )
         Task {
             do {
-                try await PostgresConnectionService.testConnection(parameters)
+                try await DatabaseConnectionService.testConnection(parameters)
                 guard test == .running else { return }
                 test = .ok
             } catch {

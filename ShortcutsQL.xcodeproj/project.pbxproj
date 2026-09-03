@@ -10,6 +10,7 @@
 		AABB00000000000000000070 /* Runestone in Frameworks */ = {isa = PBXBuildFile; productRef = AABB00000000000000000080 /* Runestone */; };
 		AABB00000000000000000071 /* TreeSitterSQLRunestone in Frameworks */ = {isa = PBXBuildFile; productRef = AABB00000000000000000081 /* TreeSitterSQLRunestone */; };
 		AABB00000000000000000072 /* PostgresClientKit in Frameworks */ = {isa = PBXBuildFile; productRef = AABB00000000000000000082 /* PostgresClientKit */; };
+		AABB00000000000000000073 /* MySQLNIO in Frameworks */ = {isa = PBXBuildFile; productRef = AABB00000000000000000083 /* MySQLNIO */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -48,6 +49,7 @@
 				AABB00000000000000000070 /* Runestone in Frameworks */,
 				AABB00000000000000000071 /* TreeSitterSQLRunestone in Frameworks */,
 				AABB00000000000000000072 /* PostgresClientKit in Frameworks */,
+				AABB00000000000000000073 /* MySQLNIO in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -102,6 +104,7 @@
 				AABB00000000000000000080 /* Runestone */,
 				AABB00000000000000000081 /* TreeSitterSQLRunestone */,
 				AABB00000000000000000082 /* PostgresClientKit */,
+				AABB00000000000000000083 /* MySQLNIO */,
 			);
 			productName = ShortcutsQL;
 			productReference = AABB00000000000000000020 /* ShortcutsQL.app */;
@@ -162,6 +165,7 @@
 				AABB00000000000000000090 /* XCRemoteSwiftPackageReference "Runestone" */,
 				AABB00000000000000000091 /* XCRemoteSwiftPackageReference "TreeSitterLanguages" */,
 				AABB00000000000000000092 /* XCRemoteSwiftPackageReference "PostgresClientKit" */,
+				AABB00000000000000000093 /* XCRemoteSwiftPackageReference "mysql-nio" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = AABB00000000000000000003 /* Products */;
@@ -487,6 +491,14 @@
 				minimumVersion = 1.5.0;
 			};
 		};
+		AABB00000000000000000093 /* XCRemoteSwiftPackageReference "mysql-nio" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/vapor/mysql-nio";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 1.9.1;
+			};
+		};
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
@@ -504,6 +516,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = AABB00000000000000000092 /* XCRemoteSwiftPackageReference "PostgresClientKit" */;
 			productName = PostgresClientKit;
+		};
+		AABB00000000000000000083 /* MySQLNIO */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = AABB00000000000000000093 /* XCRemoteSwiftPackageReference "mysql-nio" */;
+			productName = MySQLNIO;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

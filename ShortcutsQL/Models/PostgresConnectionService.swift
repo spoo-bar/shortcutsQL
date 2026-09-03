@@ -1,19 +1,8 @@
 import Foundation
 import PostgresClientKit
 
-/// Everything needed to open a PostgreSQL connection. `Sendable` so it can be
-/// handed to a detached task safely under Swift 6 concurrency.
-struct ConnectionParameters: Sendable {
-    var host: String
-    var port: Int
-    var database: String
-    var user: String
-    var password: String
-}
-
-/// Wraps PostgresClientKit (a synchronous/blocking client) behind an async
-/// API. Used by Add Database's "Test connection". Query execution is not
-/// wired up yet.
+/// Wraps PostgresClientKit (a synchronous/blocking client) behind the async
+/// API `DatabaseConnectionService` dispatches to.
 enum PostgresConnectionService {
     /// Opens a connection, runs `SELECT 1`, and closes it. Throws a
     /// `ConnectionError` with a readable message if anything fails.
@@ -52,35 +41,18 @@ enum PostgresConnectionService {
                 var rows: [[String]] = []
                 for result in cursor {
                     let row = try result.get()
-                    rows.append(row.columns.map { $0.rawValue ?? "NULL" })
+                    rows.append(row.columns.map { $0.rawValue ?? ResultTable.nullPlaceholder })
                 }
                 let durationMilliseconds = Int(Date().timeIntervalSince(start) * 1000)
 
-                let names = cursor.columns?.map(\.name)
-                    ?? (0..<(rows.first?.count ?? 0)).map { "column\($0 + 1)" }
-                let columns = names.enumerated().map { index, name in
-                    ResultColumn(name: name, isNumeric: isNumericColumn(rows, index))
-                }
-                let countLabel = rows.count == 1 ? "1 row" : "\(rows.count) rows"
-                let table = ResultTable(columns: columns, rows: rows, countLabel: countLabel)
+                let table = ResultTable.make(
+                    columnNames: cursor.columns?.map(\.name) ?? [], rows: rows
+                )
                 return (table, durationMilliseconds)
             } catch {
                 throw ConnectionError(message: readableMessage(for: error))
             }
         }.value
-    }
-
-    /// A column is treated as numeric (for right-alignment) when every
-    /// non-NULL cell parses as a number.
-    private static func isNumericColumn(_ rows: [[String]], _ index: Int) -> Bool {
-        var sawValue = false
-        for row in rows where index < row.count {
-            let cell = row[index]
-            if cell == "NULL" { continue }
-            sawValue = true
-            if Double(cell) == nil { return false }
-        }
-        return sawValue
     }
 
     /// Opens a connection. PostgresClientKit needs the credential to match the
@@ -132,10 +104,4 @@ enum PostgresConnectionService {
             return String(describing: error)
         }
     }
-}
-
-/// A connection failure surfaced to the UI with a readable message.
-struct ConnectionError: LocalizedError {
-    let message: String
-    var errorDescription: String? { message }
 }
