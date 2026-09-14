@@ -83,6 +83,7 @@ struct SQLValidatorTests {
         let error = try #require(SQLValidator.validate("SELEC * FORM logs", engine: .mySQL))
         #expect(error.hasPrefix("You have an error in your SQL syntax;"))
         #expect(error.contains("near 'SELEC' at line 1"))
+        #expect(error.contains("your MySQL server version"))
         // The PostgreSQL caret block doesn't belong in a MySQL message.
         #expect(!error.contains("LINE 1:"))
     }
@@ -115,5 +116,58 @@ struct SQLValidatorTests {
             .trimmingCharacters(in: .whitespaces) == "SELECT 1")
         #expect(SQLValidator.stripComments("SELECT 1 # note", engine: .postgreSQL)
             .contains("# note"))
+    }
+
+    // MARK: MariaDB dialect
+
+    @Test("Well-formed MariaDB passes")
+    func mariaDBValidSelect() {
+        #expect(SQLValidator.validate("SELECT COUNT(*) FROM users;", engine: .mariaDB) == nil)
+        #expect(SQLValidator.validate("SELECT 1", engine: .mariaDB) == nil)
+        #expect(SQLValidator.validate("SELECT version()", engine: .mariaDB) == nil)
+    }
+
+    @Test("MariaDB accepts the same leading keywords as MySQL")
+    func mariaDBLeadingKeywords() {
+        #expect(SQLValidator.validate("DESCRIBE users", engine: .mariaDB) == nil)
+        #expect(SQLValidator.validate("DESC users", engine: .mariaDB) == nil)
+        #expect(SQLValidator.validate("SHOW TABLES", engine: .mariaDB) == nil)
+        #expect(SQLValidator.allowedLeadingKeywords(for: .mariaDB)
+            == SQLValidator.allowedLeadingKeywords(for: .mySQL))
+    }
+
+    @Test("A MariaDB syntax error points at the MariaDB manual")
+    func mariaDBSyntaxErrorWording() throws {
+        let error = try #require(SQLValidator.validate("SELEC * FORM logs", engine: .mariaDB))
+        #expect(error.hasPrefix("You have an error in your SQL syntax;"))
+        #expect(error.contains("near 'SELEC' at line 1"))
+        // MariaDB is its own server, so it shouldn't send users to MySQL's manual.
+        #expect(error.contains("your MariaDB server version"))
+        #expect(!error.contains("MySQL"))
+        #expect(!error.contains("LINE 1:"))
+    }
+
+    @Test("MariaDB still catches unbalanced parentheses and quotes")
+    func mariaDBStructuralErrors() {
+        #expect(SQLValidator.validate("SELECT COUNT(* FROM users", engine: .mariaDB)?
+            .contains("unmatched opening parenthesis") == true)
+        #expect(SQLValidator.validate("SELECT COUNT(*)) FROM users", engine: .mariaDB)?
+            .contains("unmatched closing parenthesis") == true)
+        #expect(SQLValidator.validate("SELECT * FROM users WHERE plan = 'pro", engine: .mariaDB)?
+            .contains("unterminated quoted string") == true)
+        #expect(SQLValidator.validate("SELECT signups", engine: .mariaDB)?
+            .contains("missing FROM clause") == true)
+        // Every one of those reads like MariaDB rather than PostgreSQL.
+        #expect(SQLValidator.validate("SELECT signups", engine: .mariaDB)?
+            .contains("your MariaDB server version") == true)
+    }
+
+    @Test("MariaDB treats # as a line comment")
+    func mariaDBHashComment() {
+        #expect(SQLValidator.validate("# just a note\n", engine: .mariaDB) == "empty statement")
+        #expect(SQLValidator.validate("SELECT id FROM users # trailing note",
+                                      engine: .mariaDB) == nil)
+        #expect(SQLValidator.stripComments("SELECT 1 # note", engine: .mariaDB)
+            .trimmingCharacters(in: .whitespaces) == "SELECT 1")
     }
 }
