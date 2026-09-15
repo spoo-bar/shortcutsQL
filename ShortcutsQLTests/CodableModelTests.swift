@@ -27,6 +27,19 @@ struct CodableModelTests {
         #expect(decoded.engine == .mySQL)
     }
 
+    @Test("A MariaDB server persists as MariaDB, not MySQL")
+    func databaseServerEncodesMariaDB() throws {
+        let server = DatabaseServer(
+            id: "s2", name: "analytics", engine: .mariaDB, host: "maria.internal:3306",
+            color: .green, databases: [ServerDatabase(name: "metrics")]
+        )
+        let json = String(decoding: try JSONEncoder().encode(server), as: UTF8.self)
+        #expect(json.contains("\"engine\":\"MariaDB\""))
+        let decoded = try JSONDecoder().decode(DatabaseServer.self, from: Data(json.utf8))
+        #expect(decoded == server)
+        #expect(decoded.engine == .mariaDB)
+    }
+
     @Test("An unknown engine name decodes as the fallback engine")
     func databaseServerDecodesUnknownEngine() throws {
         // A server saved with an engine this build can no longer connect to

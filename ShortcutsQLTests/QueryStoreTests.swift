@@ -222,27 +222,49 @@ struct QueryStoreTests {
         #expect(parameters?.port == 3306)
     }
 
+    @Test("A MariaDB server's parameters use its engine and port")
+    func connectionParametersForMariaDB() {
+        let (store, _) = makeStore()
+        let id = "srv-\(UUID().uuidString)"
+        defer { store.deleteServer(id: id) }
+        store.saveServer(
+            sampleServer(id: id, name: "prod", engine: .mariaDB, host: "maria.internal:3307"),
+            credentials: ServerCredentials(user: "app", password: "pw")
+        )
+        let parameters = store.connectionParameters(for: sampleQuery(id: "q"))
+        #expect(parameters?.engine == .mariaDB)
+        #expect(parameters?.host == "maria.internal")
+        #expect(parameters?.port == 3307)
+    }
+
     @Test("A query with no database falls back to the engine's default")
     func connectionParametersDefaultDatabase() {
         let (store, _) = makeStore()
         let postgresID = "srv-\(UUID().uuidString)"
         let mysqlID = "srv-\(UUID().uuidString)"
+        let mariaID = "srv-\(UUID().uuidString)"
         defer {
             store.deleteServer(id: postgresID)
             store.deleteServer(id: mysqlID)
+            store.deleteServer(id: mariaID)
         }
         store.saveServer(sampleServer(id: postgresID, name: "pg"),
                          credentials: ServerCredentials(user: "u", password: "p"))
         store.saveServer(sampleServer(id: mysqlID, name: "my", engine: .mySQL,
                                       host: "mysql.internal:3306"),
                          credentials: ServerCredentials(user: "u", password: "p"))
+        store.saveServer(sampleServer(id: mariaID, name: "maria", engine: .mariaDB,
+                                      host: "maria.internal:3306"),
+                         credentials: ServerCredentials(user: "u", password: "p"))
 
         func query(server: String) -> SavedQuery {
             SavedQuery(id: "q", name: "Q", serverName: server, database: "", sql: "SELECT 1;")
         }
         #expect(store.connectionParameters(for: query(server: "pg"))?.database == "postgres")
-        // MySQL connects with no database selected rather than a named one.
+        // MySQL and MariaDB connect with no database selected rather than a
+        // named one.
         #expect(store.connectionParameters(for: query(server: "my"))?.database == "")
+        #expect(store.connectionParameters(for: query(server: "maria"))?.database == "")
     }
 
     @Test("Connection parameters are nil without a matching server")

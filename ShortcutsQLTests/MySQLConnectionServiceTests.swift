@@ -2,12 +2,14 @@ import Testing
 import Foundation
 @testable import ShortcutsQL
 
+/// The MySQL driver also serves MariaDB, which speaks the same protocol.
 @Suite("MySQL connection service")
 struct MySQLConnectionServiceTests {
     @Test("A hostname is used for TLS server-name indication")
     func sniUsesHostnames() {
         #expect(MySQLConnectionService.sniHostname(for: "mysql.internal") == "mysql.internal")
         #expect(MySQLConnectionService.sniHostname(for: "db-1.example.com") == "db-1.example.com")
+        #expect(MySQLConnectionService.sniHostname(for: "maria.internal") == "maria.internal")
     }
 
     @Test("An IP literal is not sent as an SNI hostname")

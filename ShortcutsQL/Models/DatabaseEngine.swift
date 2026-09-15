@@ -7,6 +7,7 @@ import Foundation
 enum DatabaseEngine: String, CaseIterable, Identifiable, Codable, Sendable {
     case postgreSQL = "PostgreSQL"
     case mySQL = "MySQL"
+    case mariaDB = "MariaDB"
 
     var id: String { rawValue }
 
@@ -18,17 +19,28 @@ enum DatabaseEngine: String, CaseIterable, Identifiable, Codable, Sendable {
     var defaultPort: Int {
         switch self {
         case .postgreSQL: 5432
-        case .mySQL: 3306
+        case .mySQL, .mariaDB: 3306
         }
     }
 
     /// The database to connect to when a query doesn't name one. PostgreSQL
-    /// requires a database name in the startup message; MySQL is happy to
-    /// connect without one selected.
+    /// requires a database name in the startup message; MySQL and MariaDB are
+    /// happy to connect without one selected.
     var defaultDatabase: String {
         switch self {
         case .postgreSQL: "postgres"
-        case .mySQL: ""
+        case .mySQL, .mariaDB: ""
+        }
+    }
+
+    /// Whether the engine speaks the MySQL client/server protocol. MariaDB
+    /// forked from MySQL and still speaks it, so both engines share one driver
+    /// and one SQL dialect; the engine is kept distinct so ports, wording and
+    /// the picker can say which server the user is actually talking to.
+    var usesMySQLProtocol: Bool {
+        switch self {
+        case .postgreSQL: false
+        case .mySQL, .mariaDB: true
         }
     }
 

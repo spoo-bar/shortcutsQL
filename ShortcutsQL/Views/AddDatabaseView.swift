@@ -57,7 +57,6 @@ struct AddDatabaseView: View {
         PickerOption(id: $0.rawValue, label: $0.rawValue, subtitle: $0.pickerSubtitle,
                      systemImage: "server.rack")
     } + [
-        PickerOption(id: "MariaDB", label: "MariaDB", subtitle: "default port 3306", systemImage: "server.rack", disabled: true),
         PickerOption(id: "SQL Server", label: "SQL Server", subtitle: "default port 1433", systemImage: "server.rack", disabled: true),
     ]
 

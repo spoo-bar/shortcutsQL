@@ -3,7 +3,9 @@ import MySQLNIO
 import NIOSSL
 
 /// Wraps MySQLNIO (a SwiftNIO, future-based client) behind the async API
-/// `DatabaseConnectionService` dispatches to.
+/// `DatabaseConnectionService` dispatches to. It serves both the MySQL and the
+/// MariaDB engine: MariaDB forked from MySQL and still speaks the same
+/// client/server protocol, so one driver covers both.
 ///
 /// Queries go over the text protocol (`COM_QUERY`) rather than prepared
 /// statements so every value arrives as the text MySQL itself would print —
@@ -102,7 +104,7 @@ enum MySQLConnectionService {
     ///
     /// Certificate verification is off to match the PostgreSQL path
     /// (PostgresClientKit's `ssl = true` doesn't validate the server
-    /// certificate either): MySQL servers overwhelmingly present the
+    /// certificate either): MySQL and MariaDB servers overwhelmingly present the
     /// self-signed certificate the server generates on first start, and
     /// rejecting those would make the engine unusable in practice. Traffic is
     /// still encrypted, but it isn't protected against an active
