@@ -496,7 +496,7 @@
 			repositoryURL = "https://github.com/vapor/mysql-nio";
 			requirement = {
 				kind = upToNextMajorVersion;
-				minimumVersion = 1.9.1;
+				minimumVersion = 1.9.3;
 			};
 		};
 /* End XCRemoteSwiftPackageReference section */
