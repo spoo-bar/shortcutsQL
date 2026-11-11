@@ -23,7 +23,7 @@ encrypted but not protected against an active man-in-the-middle.
 
 ## Requirements
 
-- **Xcode 26** or later
+- **Xcode 27.1** or later
 - **iOS 26** deployment target
 
 ## Getting started
