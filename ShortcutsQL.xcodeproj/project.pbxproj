@@ -140,8 +140,8 @@
 			isa = PBXProject;
 			attributes = {
 				BuildIndependentTargetsInParallel = 1;
-				LastSwiftUpdateCheck = 2600;
-				LastUpgradeCheck = 2600;
+				LastSwiftUpdateCheck = 2710;
+				LastUpgradeCheck = 2710;
 				TargetAttributes = {
 					AABB00000000000000000010 = {
 						CreatedOnToolsVersion = 26.0;
@@ -496,7 +496,7 @@
 			repositoryURL = "https://github.com/vapor/mysql-nio";
 			requirement = {
 				kind = upToNextMajorVersion;
-				minimumVersion = 1.9.1;
+				minimumVersion = 1.9.3;
 			};
 		};
 /* End XCRemoteSwiftPackageReference section */
