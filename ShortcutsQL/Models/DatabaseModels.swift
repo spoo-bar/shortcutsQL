@@ -35,6 +35,14 @@ struct DatabaseServer: Identifiable, Hashable, Codable {
     var host: String
     var color: ServerColor
     var databases: [ServerDatabase]
+    /// Whether to negotiate SSL/TLS. Optional so servers persisted before this
+    /// setting existed still decode (and keep connecting over SSL). Turn it off
+    /// for servers without SSL configured, e.g. one reached only over a VPN
+    /// such as Tailscale, which already encrypts the traffic.
+    var useSSL: Bool? = nil
+
+    /// The effective SSL setting: on unless explicitly turned off.
+    var effectiveUseSSL: Bool { useSSL ?? true }
 
     /// The host and port parsed from the stored "host:port" value (port
     /// defaults to the engine's standard port when absent or unparseable).

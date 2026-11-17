@@ -9,6 +9,8 @@ struct ConnectionParameters: Sendable {
     var database: String
     var user: String
     var password: String
+    /// Whether to negotiate SSL/TLS with the server.
+    var useSSL: Bool = true
 }
 
 /// A connection failure surfaced to the UI with a readable message.

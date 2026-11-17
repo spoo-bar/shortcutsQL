@@ -318,7 +318,8 @@ struct QueryEditorView: View {
             port: endpoint.port,
             database: database.isEmpty ? server.engine.defaultDatabase : database,
             user: credentials.user,
-            password: credentials.password
+            password: credentials.password,
+            useSSL: server.effectiveUseSSL
         )
         let sqlText = sql
         phase = .running

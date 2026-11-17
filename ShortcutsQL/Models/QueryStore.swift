@@ -147,7 +147,8 @@ final class QueryStore {
             port: endpoint.port,
             database: query.database.isEmpty ? server.engine.defaultDatabase : query.database,
             user: credentials.user,
-            password: credentials.password
+            password: credentials.password,
+            useSSL: server.effectiveUseSSL
         )
     }
 
