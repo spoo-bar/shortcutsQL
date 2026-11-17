@@ -54,6 +54,29 @@ struct CodableModelTests {
         #expect(decoded.endpoint.port == 5432)
     }
 
+    @Test("A server saved before the SSL setting existed still uses SSL")
+    func databaseServerDefaultsToSSL() throws {
+        let legacy = """
+        {"id":"s1","name":"prod","engine":"PostgreSQL","host":"db.internal:5432",
+         "color":"blue","databases":[]}
+        """
+        let decoded = try JSONDecoder().decode(DatabaseServer.self, from: Data(legacy.utf8))
+        #expect(decoded.useSSL == nil)
+        #expect(decoded.effectiveUseSSL)
+    }
+
+    @Test("Turning SSL off persists")
+    func databaseServerPersistsSSLOff() throws {
+        let server = DatabaseServer(
+            id: "s1", name: "tailnet", engine: .postgreSQL, host: "100.64.0.5:5432",
+            color: .blue, databases: [], useSSL: false
+        )
+        let data = try JSONEncoder().encode(server)
+        let decoded = try JSONDecoder().decode(DatabaseServer.self, from: data)
+        #expect(decoded == server)
+        #expect(!decoded.effectiveUseSSL)
+    }
+
     @Test("SavedQuery round-trips through JSON")
     func savedQueryRoundTrip() throws {
         let query = SavedQuery(

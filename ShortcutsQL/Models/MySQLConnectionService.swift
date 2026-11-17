@@ -41,7 +41,7 @@ enum MySQLConnectionService {
                 username: parameters.user,
                 database: parameters.database,
                 password: parameters.password,
-                tlsConfiguration: clientTLSConfiguration(),
+                tlsConfiguration: parameters.useSSL ? clientTLSConfiguration() : nil,
                 serverHostname: sniHostname(for: parameters.host),
                 logger: logger,
                 on: eventLoopGroup.next()

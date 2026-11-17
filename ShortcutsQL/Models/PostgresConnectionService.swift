@@ -67,7 +67,7 @@ enum PostgresConnectionService {
             configuration.port = parameters.port
             configuration.database = parameters.database
             configuration.user = parameters.user
-            configuration.ssl = true
+            configuration.ssl = parameters.useSSL
             configuration.credential = credential
             return configuration
         }
@@ -94,6 +94,8 @@ enum PostgresConnectionService {
             return "Authentication failed. Check the username and password."
         case .unsupportedAuthenticationType(let type):
             return "The server requires an unsupported authentication type (\(type))."
+        case .sslNotSupported:
+            return "The server doesn\u{2019}t support SSL. Turn off \u{201C}Use SSL\u{201D} for this server and test again."
         case .sslError:
             return "SSL/TLS negotiation failed. Confirm the server supports SSL."
         case .socketError:

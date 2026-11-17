@@ -17,6 +17,7 @@ struct AddDatabaseView: View {
     @State private var port = ""
     @State private var user = ""
     @State private var password = ""
+    @State private var useSSL = true
     @State private var color = ServerColor.blue
     @State private var databases: [String] = []
     @State private var newDatabase = ""
@@ -37,6 +38,7 @@ struct AddDatabaseView: View {
         _port = State(initialValue: port)
         _user = State(initialValue: credentials?.user ?? "")
         _password = State(initialValue: credentials?.password ?? "")
+        _useSSL = State(initialValue: server.effectiveUseSSL)
         _color = State(initialValue: server.color)
         _databases = State(initialValue: server.databases.map(\.name))
     }
@@ -107,6 +109,7 @@ struct AddDatabaseView: View {
             .onChange(of: password) { test = .idle }
             .onChange(of: port) { test = .idle }
             .onChange(of: user) { test = .idle }
+            .onChange(of: useSSL) { test = .idle }
             .onChange(of: engine) { previous, current in
                 test = .idle
                 // Carry the port over to the new engine's default when it was
@@ -185,6 +188,7 @@ struct AddDatabaseView: View {
                     .accessibilityLabel(revealPassword ? "Hide password" : "Show password")
                 }
             }
+            Toggle("Use SSL", isOn: $useSSL)
         }
     }
 
@@ -299,7 +303,8 @@ struct AddDatabaseView: View {
             port: Int(port.trimmingCharacters(in: .whitespaces)) ?? engine.defaultPort,
             database: testDatabase,
             user: user.trimmingCharacters(in: .whitespaces),
-            password: password
+            password: password,
+            useSSL: useSSL
         )
         Task {
             do {
@@ -320,7 +325,8 @@ struct AddDatabaseView: View {
             engine: engine,
             host: "\(host.trimmingCharacters(in: .whitespaces)):\(port)",
             color: color,
-            databases: databases.map { ServerDatabase(name: $0) }
+            databases: databases.map { ServerDatabase(name: $0) },
+            useSSL: useSSL
         )
         let credentials = ServerCredentials(
             user: user.trimmingCharacters(in: .whitespaces),
